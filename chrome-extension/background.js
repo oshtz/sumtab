@@ -1,7 +1,5 @@
-// Track which tabs have content scripts loaded
 const loadedTabs = new Set();
 
-// Handle messages from popup and content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Background received message:', request.action);
   
@@ -14,16 +12,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === 'summarizeTab') {
     handleSummarizeTab(request, sendResponse);
-    return true; // Keep the message channel open for async response
+    return true;
   }
 
   if (request.action === 'summarizeText') {
     handleSummarizeText(request, sendResponse);
-    return true; // Keep the message channel open for async response
+    return true;
   }
 });
 
-// Clean up loadedTabs when a tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   loadedTabs.delete(tabId);
 });
@@ -32,23 +29,19 @@ async function injectContentScript(tabId) {
   try {
     console.log('Attempting to inject content script into tab:', tabId);
     
-    // Check if we can access the tab
     const tab = await chrome.tabs.get(tabId);
     if (!tab.url) {
       throw new Error('Tab URL is not accessible');
     }
 
-    // Skip chrome:// and chrome-extension:// URLs
     if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
       throw new Error('Cannot inject script into chrome:// or extension pages');
     }
 
-    // Skip non-http(s) URLs
     if (!tab.url.startsWith('http://') && !tab.url.startsWith('https://')) {
       throw new Error('Can only inject into http:// and https:// pages');
     }
 
-    // First try to ping the content script to see if it's already loaded
     try {
       console.log('Checking if content script is already loaded...');
       const response = await chrome.tabs.sendMessage(tabId, { action: 'ping' });
@@ -61,14 +54,12 @@ async function injectContentScript(tabId) {
       console.log('Content script not loaded, proceeding with injection');
     }
 
-    // Inject the content script
     console.log('Injecting content script...');
     await chrome.scripting.executeScript({
       target: { tabId, allFrames: false },
       files: ['content.js']
     });
 
-    // Wait for content script to load
     const response = await new Promise((resolve) => {
       const listener = (message, sender) => {
         if (message.action === 'contentScriptLoaded' && sender.tab.id === tabId) {
@@ -78,7 +69,6 @@ async function injectContentScript(tabId) {
       };
       chrome.runtime.onMessage.addListener(listener);
       
-      // Set a timeout
       setTimeout(() => {
         chrome.runtime.onMessage.removeListener(listener);
         resolve(false);
@@ -106,17 +96,14 @@ async function handleSummarizeTab(request, sendResponse) {
       throw new Error('Tab URL is not accessible');
     }
 
-    // Skip chrome:// and chrome-extension:// URLs
     if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
       throw new Error('Cannot access chrome:// or extension pages');
     }
 
-    // Skip non-http(s) URLs
     if (!tab.url.startsWith('http://') && !tab.url.startsWith('https://')) {
       throw new Error('Can only access http:// and https:// pages');
     }
 
-    // Ensure content script is loaded with retries
     let retries = 0;
     const maxRetries = 3;
     while (retries < maxRetries) {
@@ -133,7 +120,6 @@ async function handleSummarizeTab(request, sendResponse) {
       }
     }
 
-    // Get page content with timeout and retry
     let content = null;
     retries = 0;
     while (retries < maxRetries) {
@@ -181,13 +167,11 @@ async function handleSummarizeTab(request, sendResponse) {
       throw new Error('No content found on page');
     }
 
-    // Truncate text if too long (GPT-3.5 has ~4k token limit)
     const maxChars = 12000;
     const truncatedText = sanitizedText.length > maxChars 
       ? sanitizedText.slice(0, maxChars) + "..."
       : sanitizedText;
 
-    // Make direct API request to OpenAI
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -238,7 +222,6 @@ async function handleSummarizeText(request, sendResponse) {
       throw new Error('No API key provided');
     }
 
-    // Build the system message based on summary type
     let systemMessage = request.text.includes('bullet points')
       ? 'You are a helpful assistant that creates clear, concise bullet-point summaries. Format the output as bullet points, with each point starting with a bullet (•). Keep each point brief and focused.'
       : 'You are a helpful assistant that creates comprehensive, detailed summaries. Include important context and key details while maintaining clarity. Aim for a thorough understanding of the content.';

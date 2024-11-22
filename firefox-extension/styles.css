@@ -85,9 +85,8 @@ body {
   object-fit: contain;
 }
 
-/* Adjust logo for dark mode if needed */
 [data-theme="dark"] .logo {
-  filter: brightness(0) invert(1); /* This will make the logo white in dark mode */
+  filter: brightness(0) invert(1);
 }
 
 h1 {

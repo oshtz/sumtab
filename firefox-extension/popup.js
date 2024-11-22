@@ -1,9 +1,6 @@
-// Firefox-specific version of popup.js
-// Dark mode handling
 const darkModeToggle = document.getElementById('darkMode');
 const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
 
-// Initialize theme
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme === 'dark' || (!savedTheme && prefersDarkScheme.matches)) {
   document.body.setAttribute('data-theme', 'dark');
@@ -20,7 +17,6 @@ darkModeToggle.addEventListener('change', () => {
   }
 });
 
-// Get DOM elements
 const tabList = document.getElementById('tabList');
 const apiKeyInput = document.getElementById('apiKey');
 const saveApiKeyBtn = document.getElementById('saveApiKey');
@@ -38,11 +34,9 @@ let tabs = [];
 
 console.log('Starting tab loading...');
 
-// Initialize the popup
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Popup loaded, initializing...');
   
-  // Load API key and summaries from storage
   const stored = await browser.storage.local.get(['apiKey', 'model', 'regularSummary', 'bulletSummary', 'isBulletMode']);
   if (stored.apiKey) {
     apiKeyInput.value = stored.apiKey;
@@ -51,7 +45,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     modelSelect.value = stored.model;
   }
   
-  // Restore the last viewed summary
   if (stored.regularSummary || stored.bulletSummary) {
     resultsCard.style.display = 'block';
     if (stored.isBulletMode && stored.bulletSummary) {
@@ -65,7 +58,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     console.log('Attempting to query tabs...');
-    // Get all tabs
     const allTabs = await browser.tabs.query({});
     console.log('Raw tabs data:', allTabs);
     
@@ -77,7 +69,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     tabs = allTabs;
     console.log('Tabs loaded successfully:', tabs.length);
 
-    // Check if tab-list element exists
     const tabListElement = document.getElementById('tabList');
     if (!tabListElement) {
       console.error('tab-list element not found in DOM');
@@ -85,7 +76,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     console.log('tab-list element found:', tabListElement);
 
-    // Render tab list
     console.log('Rendering tabs, count:', tabs.length);
     renderTabs(tabs);
   } catch (error) {
@@ -93,7 +83,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// Save API key when save button is clicked
 saveApiKeyBtn.addEventListener('click', () => {
   const apiKey = apiKeyInput.value.trim();
   if (apiKey) {
@@ -104,7 +93,6 @@ saveApiKeyBtn.addEventListener('click', () => {
   }
 });
 
-// Save API key when pressing Enter in the input field
 apiKeyInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     const apiKey = apiKeyInput.value.trim();
@@ -117,13 +105,11 @@ apiKeyInput.addEventListener('keypress', (e) => {
   }
 });
 
-// Save model when changed
 modelSelect.addEventListener('change', () => {
   const model = modelSelect.value;
   browser.storage.local.set({ model });
 });
 
-// Clear button functionality
 clearBtn.addEventListener('click', () => {
   summaryContent.innerHTML = '';
   resultsCard.style.display = 'none';
@@ -131,7 +117,6 @@ clearBtn.addEventListener('click', () => {
   browser.storage.local.remove(['regularSummary', 'bulletSummary', 'isBulletMode']);
 });
 
-// Copy to clipboard functionality
 copyBtn.addEventListener('click', async () => {
   const content = summaryContent.textContent;
   if (!content) {
@@ -142,7 +127,6 @@ copyBtn.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(content);
     
-    // Visual feedback
     copyBtn.classList.add('copy-success');
     copyBtn.innerHTML = `
       <svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
@@ -150,7 +134,6 @@ copyBtn.addEventListener('click', async () => {
       </svg>
     `;
     
-    // Reset button after 2 seconds
     setTimeout(() => {
       copyBtn.classList.remove('copy-success');
       copyBtn.innerHTML = `
@@ -167,7 +150,6 @@ copyBtn.addEventListener('click', async () => {
   }
 });
 
-// Open in new tab functionality
 openInNewTab.addEventListener('click', () => {
   const markdownContent = summaryContent.textContent;
   if (!markdownContent) {
@@ -180,20 +162,16 @@ openInNewTab.addEventListener('click', () => {
   browser.tabs.create({ url });
 });
 
-// Sanitization function
 function sanitizeAndSetContent(element, content, isBulletMode = false) {
-  // First sanitize the content
   const sanitizedContent = content
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
-  // Create a new div for the content
   const container = document.createElement('div');
   
   if (isBulletMode) {
-    // For bullet points, split by newlines and create list items
     const bulletPoints = sanitizedContent.split('\n').filter(point => point.trim());
     const ul = document.createElement('ul');
     bulletPoints.forEach(point => {
@@ -203,7 +181,6 @@ function sanitizeAndSetContent(element, content, isBulletMode = false) {
     });
     container.appendChild(ul);
   } else {
-    // For regular text, split paragraphs and create p elements
     const paragraphs = sanitizedContent.split('\n\n');
     paragraphs.forEach(para => {
       if (para.trim()) {
@@ -214,18 +191,15 @@ function sanitizeAndSetContent(element, content, isBulletMode = false) {
     });
   }
 
-  // Clear existing content and append new content
   while (element.firstChild) {
     element.removeChild(element.firstChild);
   }
   element.appendChild(container);
 }
 
-// Convert to bullet points functionality
 async function convertToBulletPoints() {
   const stored = await browser.storage.local.get(['regularSummary', 'bulletSummary', 'isBulletMode']);
   
-  // If we already have bullet points, just toggle to them
   if (stored.bulletSummary) {
     sanitizeAndSetContent(summaryContent, stored.bulletSummary, true);
     bulletsBtn.classList.add('active');
@@ -233,7 +207,6 @@ async function convertToBulletPoints() {
     return;
   }
 
-  // Get the regular summary to convert
   const regularSummary = stored.regularSummary || summaryContent.textContent;
   if (!regularSummary) {
     updateApiStatus('No content to convert', false);
@@ -280,7 +253,6 @@ async function convertToBulletPoints() {
     const data = await response.json();
     const bulletPoints = data.choices[0].message.content.trim();
 
-    // Save both versions
     await browser.storage.local.set({
       regularSummary: regularSummary,
       bulletSummary: bulletPoints,
@@ -300,19 +272,16 @@ async function convertToBulletPoints() {
   }
 }
 
-// Toggle between regular and bullet point summaries
 async function toggleSummaryMode() {
   const currentContent = summaryContent.textContent;
   if (!currentContent) return;
 
   if (bulletsBtn.classList.contains('active')) {
-    // Switch to regular mode
     const stored = await browser.storage.local.get(['regularSummary']);
     sanitizeAndSetContent(summaryContent, stored.regularSummary || '', false);
     bulletsBtn.classList.remove('active');
     browser.storage.local.set({ isBulletMode: false });
   } else {
-    // Switch to bullet points or create them if they don't exist
     const stored = await browser.storage.local.get(['bulletSummary']);
     if (stored.bulletSummary) {
       sanitizeAndSetContent(summaryContent, stored.bulletSummary, true);
@@ -324,14 +293,11 @@ async function toggleSummaryMode() {
   }
 }
 
-// Add event listener for bullets button
 bulletsBtn.addEventListener('click', toggleSummaryMode);
 
-// Tab handling
 const selectAllBtn = document.getElementById('selectAll');
 const deselectAllBtn = document.getElementById('deselectAll');
 
-// Load tabs (Firefox uses browser.tabs)
 browser.tabs.query({}).then(browserTabs => {
   console.log('Tabs loaded:', browserTabs);
   tabs = browserTabs;
@@ -377,17 +343,13 @@ function createTabItem(tab) {
   tabItem.appendChild(favicon);
   tabItem.appendChild(title);
   
-  // Add click handler for the entire tab item
   tabItem.addEventListener('click', (e) => {
-    // Prevent toggling if clicking the checkbox directly
     if (e.target !== checkbox) {
       checkbox.checked = !checkbox.checked;
-      // Trigger change event to update button state
       checkbox.dispatchEvent(new Event('change'));
     }
   });
   
-  // Update summarize button state on checkbox change
   checkbox.addEventListener('change', updateSummarizeButtonState);
   
   return tabItem;
@@ -420,7 +382,6 @@ deselectAllBtn.addEventListener('click', () => {
   updateSummarizeButtonState();
 });
 
-// Summarize selected tabs functionality
 async function summarizeSelectedTabs() {
   const selectedTabs = getSelectedTabs();
   if (selectedTabs.length === 0) {
@@ -445,7 +406,6 @@ async function summarizeSelectedTabs() {
         console.log('Summarizing tab:', tab.title);
         const summary = await summarizeTab(tab, apiKey);
         if (summary) {
-          // Format the summary with proper spacing
           const formattedSummary = `### ${tab.title}\n\n${summary}\n`;
           summaries.push(formattedSummary);
         }
@@ -456,12 +416,10 @@ async function summarizeSelectedTabs() {
     }
 
     if (summaries.length > 0) {
-      // Join summaries with clear separation
       const combinedSummary = summaries.join('\n\n---\n\n');
       sanitizeAndSetContent(summaryContent, combinedSummary);
       resultsCard.style.display = 'block';
       
-      // Save the results
       await browser.storage.local.set({
         regularSummary: combinedSummary,
         isBulletMode: false
@@ -486,7 +444,6 @@ async function summarizeTab(tab, apiKey) {
   }
 
   try {
-    // Inject content script
     try {
       await browser.tabs.executeScript(tab.id, {
         file: 'content.js'
@@ -495,7 +452,6 @@ async function summarizeTab(tab, apiKey) {
       console.log('Content script may already be injected:', error);
     }
 
-    // Get page content
     const response = await browser.tabs.sendMessage(tab.id, { action: 'getContent' });
     if (!response || !response.success) {
       throw new Error('No content found');
@@ -503,7 +459,6 @@ async function summarizeTab(tab, apiKey) {
 
     const pageContent = `Title: ${tab.title}\n\nContent:\n${response.content}`;
 
-    // Get summary from API
     const apiResponse = await browser.runtime.sendMessage({
       action: 'summarizeText',
       text: pageContent,
@@ -522,10 +477,8 @@ async function summarizeTab(tab, apiKey) {
   }
 }
 
-// Add event listeners
 summarizeBtn.addEventListener('click', summarizeSelectedTabs);
 
-// Show/hide loader function
 function toggleLoader(show) {
   loader.style.display = show ? 'block' : 'none';
 }

@@ -1,8 +1,6 @@
-// Dark mode handling
 const darkModeToggle = document.getElementById('darkMode');
 const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
 
-// Initialize theme
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme === 'dark' || (!savedTheme && prefersDarkScheme.matches)) {
   document.body.setAttribute('data-theme', 'dark');
@@ -11,7 +9,6 @@ if (savedTheme === 'dark' || (!savedTheme && prefersDarkScheme.matches)) {
 
 darkModeToggle.addEventListener('change', handleThemeChange);
 
-// Global variables
 let summaryCache = {
   regular: {},
   bullets: {},
@@ -38,21 +35,17 @@ let currentSummary = '';
 let bulletSummary = '';
 let isBulletMode = false;
 
-// Load cached summaries from storage
 async function loadCachedSummaries() {
   try {
     const data = await chrome.storage.local.get('summaryCache');
     if (data.summaryCache) {
       summaryCache = data.summaryCache;
       
-      // Get all current tabs
       const tabs = await chrome.tabs.query({});
       const summaryContent = document.getElementById('summaryContent');
       
-      // Clear existing summaries
       summaryContent.innerHTML = '';
       
-      // Display cached summaries for current tabs
       for (const tab of tabs) {
         const regularSummary = summaryCache.regular[tab.url];
         const bulletSummary = summaryCache.bullets[tab.url];
@@ -69,7 +62,6 @@ async function loadCachedSummaries() {
           
           summaryContent.appendChild(summaryItem);
           
-          // Show the summary section
           const resultsCard = document.getElementById('results');
           if (resultsCard) {
             resultsCard.style.display = 'block';
@@ -82,10 +74,8 @@ async function loadCachedSummaries() {
   }
 }
 
-// Save summaries to storage with timestamp
 async function saveSummariesToStorage() {
   try {
-    // Add timestamp to cache
     const cacheWithTimestamp = {
       ...summaryCache,
       timestamp: Date.now()
@@ -96,13 +86,11 @@ async function saveSummariesToStorage() {
   }
 }
 
-// Clear old summaries (older than 24 hours)
 async function clearOldSummaries() {
   const now = Date.now();
   const oneDayMs = 24 * 60 * 60 * 1000;
   
   if (summaryCache.timestamp && (now - summaryCache.timestamp > oneDayMs)) {
-    // Clear the entire cache if it's old
     summaryCache = {
       regular: {},
       bullets: {},
@@ -112,7 +100,6 @@ async function clearOldSummaries() {
   }
 }
 
-// Function to load and display tabs
 async function loadTabs() {
   try {
     const tabs = await chrome.tabs.query({ currentWindow: true });
@@ -125,14 +112,12 @@ async function loadTabs() {
     }
 
     for (const tab of tabs) {
-      // Skip chrome:// and chrome-extension:// URLs
       if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
         continue;
       }
 
       const tabElement = createTabElement(tab);
       
-      // Check for cached summary and display it
       if (summaryCache.regular[tab.url]) {
         const cached = summaryCache.regular[tab.url];
         if (Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
@@ -147,7 +132,6 @@ async function loadTabs() {
       tabListContainer.appendChild(tabElement);
     }
 
-    // Update button state after loading tabs
     updateSummarizeButtonState();
   } catch (error) {
     console.error('Error loading tabs:', error);
@@ -155,7 +139,6 @@ async function loadTabs() {
   }
 }
 
-// Function to create a tab element
 function createTabElement(tab) {
   const tabDiv = document.createElement('div');
   tabDiv.className = 'tab-item';
@@ -166,12 +149,9 @@ function createTabElement(tab) {
   checkbox.className = 'tab-checkbox';
   checkbox.setAttribute('data-tab-id', tab.id);
 
-  // Add click handler to the entire tab div
   tabDiv.addEventListener('click', (e) => {
-    // Don't toggle if clicking the checkbox directly (it handles its own state)
     if (e.target !== checkbox) {
       checkbox.checked = !checkbox.checked;
-      // Manually trigger change event for the checkbox
       checkbox.dispatchEvent(new Event('change'));
     }
   });
@@ -206,13 +186,11 @@ function createTabElement(tab) {
   return tabDiv;
 }
 
-// Update summarize button state
 function updateSummarizeButtonState() {
   const selectedCount = document.querySelectorAll('.tab-checkbox:checked').length;
   summarizeSelectedBtn.disabled = selectedCount === 0;
 }
 
-// Function to get selected tabs
 function getSelectedTabs() {
   const checkboxes = document.querySelectorAll('.tab-checkbox:checked');
   return Array.from(checkboxes).map(checkbox => {
@@ -221,7 +199,6 @@ function getSelectedTabs() {
   });
 }
 
-// Handle summarize selected tabs
 async function handleSummarizeSelected() {
   const apiKey = apiKeyInput.value.trim();
   if (!apiKey) {
@@ -245,12 +222,10 @@ async function handleSummarizeSelected() {
       const tabElement = document.querySelector(`.tab-item[data-tab-id="${tabId}"]`);
       
       try {
-        // Add loading indicator to this tab
         const loadingSpinner = document.createElement('div');
         loadingSpinner.className = 'loader-spinner small';
         tabElement.appendChild(loadingSpinner);
 
-        // Get the tab's content and summarize it
         const response = await chrome.runtime.sendMessage({
           action: 'summarizeTab',
           tabId,
@@ -262,21 +237,17 @@ async function handleSummarizeSelected() {
           throw new Error(response.error);
         }
 
-        // Get the tab for caching
         const tab = await chrome.tabs.get(tabId);
         
-        // Cache the regular summary
         summaryCache.regular[tab.url] = response.summary;
         await saveSummariesToStorage();
 
-        // Update the summary in the UI
         await updateTabSummary(tabId, response.summary, false);
 
       } catch (error) {
         console.error(`Error summarizing tab ${tabId}:`, error);
         updateApiStatus(`Error summarizing tab: ${error.message}`, false);
       } finally {
-        // Remove loading spinner
         const spinner = tabElement.querySelector('.loader-spinner');
         if (spinner) spinner.remove();
       }
@@ -292,7 +263,6 @@ async function handleSummarizeSelected() {
   }
 }
 
-// Update tab summary with caching
 async function updateTabSummary(tabId, summary, isBulletStyle = false) {
   const summaryContent = document.getElementById('summaryContent');
   const existingItem = summaryContent.querySelector(`[data-tab-id="${tabId}"]`);
@@ -300,7 +270,6 @@ async function updateTabSummary(tabId, summary, isBulletStyle = false) {
   try {
     const tab = await chrome.tabs.get(tabId);
     
-    // Cache the summary
     if (isBulletStyle) {
       summaryCache.bullets[tab.url] = summary;
     } else {
@@ -322,7 +291,6 @@ async function updateTabSummary(tabId, summary, isBulletStyle = false) {
       summaryContent.appendChild(summaryItem);
     }
 
-    // Show the summary section
     const resultsCard = document.getElementById('results');
     if (resultsCard) {
       resultsCard.style.display = 'block';
@@ -334,7 +302,6 @@ async function updateTabSummary(tabId, summary, isBulletStyle = false) {
   }
 }
 
-// Handle bullets toggle
 async function toggleSummaryMode() {
   const summaryContent = document.getElementById('summaryContent');
   const items = summaryContent.querySelectorAll('.summary-item');
@@ -350,20 +317,17 @@ async function toggleSummaryMode() {
 
   try {
     let needsConversion = false;
-    // Check if we need to make any API calls
     for (const item of items) {
       const tabId = parseInt(item.getAttribute('data-tab-id'));
       const tab = await chrome.tabs.get(tabId);
       const currentText = item.querySelector('.summary-text').textContent;
       
-      // If current text is regular and we don't have bullets cached, we'll need conversion
       if (!summaryCache.bullets[tab.url] && currentText === summaryCache.regular[tab.url]) {
         needsConversion = true;
         break;
       }
     }
 
-    // Only show loader if we need to make API calls
     if (needsConversion) {
       toggleLoader(true);
       updateApiStatus('Converting summaries to bullet points...', true);
@@ -376,13 +340,10 @@ async function toggleSummaryMode() {
         const tab = await chrome.tabs.get(tabId);
         const currentText = item.querySelector('.summary-text').textContent;
         
-        // Check if we have a bullet summary cached
         if (summaryCache.bullets[tab.url]) {
-          // If current text is bullet summary, switch to regular
           if (currentText === summaryCache.bullets[tab.url]) {
             item.querySelector('.summary-text').textContent = summaryCache.regular[tab.url];
           } else {
-            // Switch to bullet summary
             item.querySelector('.summary-text').textContent = summaryCache.bullets[tab.url];
           }
         } else {
@@ -397,7 +358,6 @@ async function toggleSummaryMode() {
             throw new Error(response.error);
           }
 
-          // Cache and update the bullet summary
           await updateTabSummary(tabId, response.summary, true);
         }
       } catch (error) {
@@ -414,7 +374,6 @@ async function toggleSummaryMode() {
   }
 }
 
-// Function to get all summaries as text
 function getAllSummariesText() {
   const summaryContent = document.getElementById('summaryContent');
   const summaries = [];
@@ -428,9 +387,7 @@ function getAllSummariesText() {
   return summaries.join('\n');
 }
 
-// Handle clear button
 async function handleClear() {
-  // Clear UI
   const summaryContent = document.getElementById('summaryContent');
   if (summaryContent) {
     summaryContent.innerHTML = '';
@@ -441,14 +398,12 @@ async function handleClear() {
     resultsCard.style.display = 'none';
   }
 
-  // Reset cache object
   summaryCache = {
     regular: {},
     bullets: {},
     timestamp: 0
   };
 
-  // Clear from storage
   try {
     await chrome.storage.local.remove('summaryCache');
     updateApiStatus('Summaries cleared', true);
@@ -458,7 +413,6 @@ async function handleClear() {
   }
 }
 
-// Handle copy button
 function handleCopy() {
   const text = getAllSummariesText();
   if (!text) return;
@@ -470,7 +424,6 @@ function handleCopy() {
   });
 }
 
-// Handle open in new tab
 function handleOpenInNewTab() {
   const text = getAllSummariesText();
   if (!text) return;
@@ -479,23 +432,18 @@ function handleOpenInNewTab() {
   const url = URL.createObjectURL(blob);
   
   chrome.tabs.create({ url }, () => {
-    // Clean up the URL after the tab is created
     URL.revokeObjectURL(url);
   });
 }
 
-// Initialize the popup
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     console.log('Popup loaded, initializing...');
     
-    // Load cached summaries first
     await loadCachedSummaries();
     
-    // Clear old summaries
     await clearOldSummaries();
     
-    // Load saved settings
     const settings = await chrome.storage.local.get([
       'apiKey',
       'model'
@@ -510,10 +458,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       modelSelect.value = settings.model;
     }
 
-    // Load tabs
     await loadTabs();
 
-    // Set up event listeners
     setupEventListeners();
   } catch (error) {
     console.error('Error initializing popup:', error);
@@ -521,7 +467,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// Set up event listeners
 function setupEventListeners() {
   const elements = {
     summarizeSelected: document.getElementById('summarizeSelected'),
@@ -536,7 +481,6 @@ function setupEventListeners() {
     bulletsBtn: document.getElementById('bulletsBtn')
   };
 
-  // Add event listeners if elements exist
   elements.summarizeSelected?.addEventListener('click', handleSummarizeSelected);
   elements.saveApiKey?.addEventListener('click', handleSaveApiKey);
   elements.darkMode?.addEventListener('change', handleThemeChange);
@@ -557,13 +501,11 @@ function setupEventListeners() {
   elements.bulletsBtn?.addEventListener('click', toggleSummaryMode);
 }
 
-// Handler functions for model settings
 function handleModelChange() {
   const model = document.getElementById('modelSelect').value;
   chrome.storage.local.set({ model });
 }
 
-// Handler functions
 function handleSaveApiKey() {
   const apiKey = apiKeyInput.value.trim();
   if (apiKey) {
@@ -586,7 +528,6 @@ function handleThemeChange() {
   }
 }
 
-// Utility functions
 function toggleLoader(show) {
   loader.style.display = show ? 'block' : 'none';
   document.getElementById('main-content').style.display = show ? 'none' : 'block';

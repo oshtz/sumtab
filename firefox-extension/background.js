@@ -1,14 +1,10 @@
-// Handle messages from popup
-
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Background received message:', request.action);
 
   if (request.action === 'summarizeTab') {
     try {
-      // Get the tab content by sending message to content script
       console.log('Background script: Getting content from tab', request.tabId);
       
-      // Ensure content script is injected
       try {
         browser.tabs.executeScript(request.tabId, { file: 'content.js' });
         console.log('Content script injected successfully');
@@ -16,7 +12,6 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log('Content script already injected or failed:', e);
       }
 
-      // Wait a bit for content script to initialize
       browser.tabs.sendMessage(request.tabId, { 
         action: 'getPageContent' 
       }, (response) => {
@@ -25,13 +20,11 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         const sanitizedText = response.content;
-        // Truncate text if too long (GPT-3.5 has ~4k token limit)
         const maxChars = 12000;
         const truncatedText = sanitizedText.length > maxChars 
           ? sanitizedText.slice(0, maxChars) + "..."
           : sanitizedText;
 
-        // Make direct API request to OpenAI
         console.log('Making OpenAI API request');
         fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -73,7 +66,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.error('Background script error:', error);
       sendResponse({ error: error.message });
     }
-    return true; // Required for async response
+    return true;
   }
 
   if (request.action === 'summarizeText') {
@@ -114,7 +107,6 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
           throw new Error('Invalid API response format');
         }
 
-        // Format the summary with proper spacing
         const summary = data.choices[0].message.content.trim();
         
         sendResponse({
@@ -129,6 +121,6 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
       }
     })();
-    return true; // Required for async response
+    return true;
   }
 });

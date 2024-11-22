@@ -1,11 +1,8 @@
-// Content script initialization
 (() => {
   console.log('Content script initializing...');
   
-  // Set up message listeners immediately
   setupMessageListeners();
   
-  // Notify background script that content script is loaded
   notifyScriptLoaded();
 })();
 
@@ -51,7 +48,6 @@ function setupMessageListeners() {
 
     if (request.action === 'getPageContent') {
       try {
-        // Get main content with timeout
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Content extraction timeout')), 5000);
         });
@@ -75,16 +71,14 @@ function setupMessageListeners() {
         console.error('Content extraction error:', error);
         sendResponse({ error: error.message, success: false });
       }
-      return true; // Keep the message channel open for async response
+      return true;
     }
   });
 }
 
 function extractPageContent() {
-  // Create a copy of the document body to manipulate
   const bodyClone = document.body.cloneNode(true);
 
-  // Remove unwanted elements from the clone
   const unwantedSelectors = [
     'script', 'style', 'noscript', 'iframe', 'img', 'video',
     'nav', 'footer', 'header', '[role="navigation"]',
@@ -98,27 +92,22 @@ function extractPageContent() {
     bodyClone.querySelectorAll(selector).forEach(el => el.remove());
   });
 
-  // Try different strategies to get the main content
   const strategies = [
-    // Strategy 1: Schema.org Article
     () => {
       const article = document.querySelector('[itemtype*="Article"]');
       return article ? article.textContent : null;
     },
 
-    // Strategy 2: Article element
     () => {
       const article = bodyClone.querySelector('article');
       return article ? article.textContent : null;
     },
 
-    // Strategy 3: Main content
     () => {
       const main = bodyClone.querySelector('main');
       return main ? main.textContent : null;
     },
 
-    // Strategy 4: Content by class/id
     () => {
       const contentSelectors = [
         '.content', '.article', '.post', '.entry',
@@ -133,7 +122,6 @@ function extractPageContent() {
       return null;
     },
 
-    // Strategy 5: Largest text content block
     () => {
       let maxLength = 0;
       let bestContent = '';
@@ -150,14 +138,12 @@ function extractPageContent() {
     }
   ];
 
-  // Try each strategy in order until we get content
   for (const strategy of strategies) {
     const content = strategy();
-    if (content && content.trim().length > 100) { // Minimum content length threshold
+    if (content && content.trim().length > 100) {
       return content.trim();
     }
   }
 
-  // Fallback: Return all text content if no strategy worked
   return bodyClone.textContent.trim();
 }

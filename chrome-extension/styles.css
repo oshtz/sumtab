@@ -86,9 +86,8 @@ body {
   object-fit: contain;
 }
 
-/* Adjust logo for dark mode if needed */
 [data-theme="dark"] .logo {
-  filter: brightness(0) invert(1); /* This will make the logo white in dark mode */
+  filter: brightness(0) invert(1);
 }
 
 h1 {
@@ -490,7 +489,6 @@ input[type="password"]:focus,
   height: 16px;
 }
 
-/* Copy button styles */
 .copy-success {
   animation: copySuccess 0.3s ease;
   background: var(--success-color) !important;
@@ -509,7 +507,6 @@ input[type="password"]:focus,
   transition: transform 0.2s ease;
 }
 
-/* Bullet points styles */
 .summary-content ul {
   margin: 0.5em 0;
   padding-left: 1.5em;
@@ -531,7 +528,6 @@ input[type="password"]:focus,
   line-height: 1.5;
 }
 
-/* Button active state */
 .button.active,
 .icon-btn.active {
   background: var(--accent-color);
@@ -539,7 +535,6 @@ input[type="password"]:focus,
   color: var(--button-text);
 }
 
-/* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -558,7 +553,6 @@ input[type="password"]:focus,
   background: var(--accent-hover);
 }
 
-/* Action Buttons */
 .action-button {
   flex: 1;
   min-width: 80px;
@@ -614,7 +608,6 @@ input[type="password"]:focus,
   transform: translateX(50%) translateY(0);
 }
 
-/* Summary Content */
 .summary-content {
   padding: 16px;
   min-height: 100px;
@@ -626,14 +619,12 @@ input[type="password"]:focus,
   line-height: 1.6;
 }
 
-/* Section Layout */
 .settings-section,
 .tabs-section,
 .summary-section {
   margin-bottom: 16px;
 }
 
-/* Summary Section */
 .summary-section {
   position: relative;
   margin-top: 1rem;
@@ -673,7 +664,6 @@ input[type="password"]:focus,
   white-space: pre-wrap;
 }
 
-/* Summary actions */
 .summary-actions {
   display: flex;
   gap: 0.5rem;
@@ -713,7 +703,6 @@ input[type="password"]:focus,
   display: none;
 }
 
-/* Bullet points styling */
 .bullet-list {
   list-style-type: none;
   padding-left: 0;
