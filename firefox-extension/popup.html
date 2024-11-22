@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tab Summarizer</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+  <script src="lib/marked.min.js"></script>
+  <meta charset="UTF-8">
+</head>
+<body>
+  <div id="loader" class="loader" style="display: none;">
+    <div class="hill"></div>
+    <div class="box"></div>
+  </div>
+  <div id="main-content">
+    <div class="container">
+      <div class="header">
+        <div class="logo-container">
+          <img src="icons/logo.png" alt="Tab Summarizer" class="logo">
+        </div>
+        <div class="theme-toggle">
+          <input type="checkbox" id="darkMode" class="theme-checkbox">
+          <label for="darkMode" class="theme-label">
+            <span class="theme-icon">🌙</span>
+            <span class="theme-icon">☀️</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- API Key Section -->
+      <div class="card">
+        <div class="card-header">
+          <h2>API Configuration</h2>
+        </div>
+        <div class="card-content">
+          <div class="input-group">
+            <label for="apiKey">OpenAI API Key</label>
+            <div class="api-key-container">
+              <input type="password" id="apiKey" placeholder="Enter your API key">
+              <button id="saveApiKey" class="button primary">Save</button>
+            </div>
+          </div>
+          <div class="api-status" id="apiStatus"></div>
+        </div>
+      </div>
+
+      <!-- Model Selection -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Model Settings</h2>
+        </div>
+        <div class="card-content">
+          <div class="input-group">
+            <label for="model">AI Model</label>
+            <select id="model" class="select">
+              <optgroup label="GPT-4o (Recommended)">
+                <option value="gpt-4o">GPT-4o - Latest (Fastest, Most Capable)</option>
+                <option value="gpt-4o-2024-08-06">GPT-4o (Aug 2024) - Structured Output</option>
+                <option value="gpt-4o-mini">GPT-4o Mini - Fast & Affordable</option>
+              </optgroup>
+              <optgroup label="GPT-4">
+                <option value="gpt-4-turbo">GPT-4 Turbo - Latest</option>
+                <option value="gpt-4">GPT-4 - Standard</option>
+              </optgroup>
+              <optgroup label="GPT-3.5">
+                <option value="gpt-3.5-turbo">GPT-3.5 Turbo - Fast & Affordable</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Selection -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Select Tabs to Summarize</h2>
+          <div class="button-group">
+            <button id="selectAll" class="button secondary small">Select All</button>
+            <button id="deselectAll" class="button secondary small">Deselect All</button>
+          </div>
+        </div>
+        <div class="card-content">
+          <div id="tabList" class="tab-list"></div>
+        </div>
+      </div>
+
+      <div class="button-container">
+        <button id="summarizeBtn" class="button primary" disabled>Summarize Selected Tabs</button>
+      </div>
+
+      <!-- Results Section -->
+      <div class="results-card" id="results-card" style="display: none;">
+        <div class="results-header">
+          <h2>Summary</h2>
+          <div class="header-buttons">
+            <button id="openInNewTab" class="icon-btn" title="Open in new tab">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+              </svg>
+            </button>
+            <button id="bullets-btn" class="icon-btn" title="Convert to bullet points">Bullets</button>
+            <button id="copy" class="icon-btn" title="Copy to clipboard">
+              <svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+                <path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+              </svg>
+            </button>
+            <button id="clear-btn" class="icon-btn" title="Clear results">Clear</button>
+          </div>
+        </div>
+        <div class="results-content" id="summary-content"></div>
+      </div>
+    </div>
+  </div>
+  <div class="resize-handle"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

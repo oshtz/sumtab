@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>sumtab</title>
+  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+</head>
+<body>
+  <div id="loader" class="loader" style="display: none;">
+    <div class="hill"></div>
+    <div class="box"></div>
+  </div>
+
+  <div id="main-content">
+    <div class="container">
+      <div class="header">
+        <div class="logo-container">
+          <img src="logo.png" alt="sumtab" class="logo">
+        </div>
+        <div class="theme-toggle">
+          <input type="checkbox" id="darkMode" class="theme-checkbox">
+          <label for="darkMode" class="theme-label">
+            <span class="theme-icon">🌙</span>
+            <span class="theme-icon">☀️</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- API Key Section -->
+      <div class="settings-section">
+        <div class="card">
+          <div class="card-header">
+            <h2>API Configuration</h2>
+          </div>
+          <div class="card-content">
+            <div class="input-group">
+              <label for="apiKey">OpenAI API Key</label>
+              <div class="api-key-container">
+                <input type="password" id="apiKey" placeholder="Enter your API key">
+                <button id="saveApiKey" class="button primary">Save</button>
+              </div>
+            </div>
+            <div class="api-status" id="apiStatus"></div>
+          </div>
+        </div>
+
+        <!-- Model Selection -->
+        <div class="card">
+          <div class="card-header">
+            <h2>Model Settings</h2>
+          </div>
+          <div class="card-content">
+            <div class="input-group">
+              <label for="modelSelect">Model</label>
+              <select id="modelSelect" class="select">
+                <optgroup label="GPT-4o">
+                  <option value="gpt-4o">GPT-4o (Fastest & Most Advanced)</option>
+                  <option value="chatgpt-4o-latest">ChatGPT-4o Latest (Most Up-to-date)</option>
+                  <option value="gpt-4o-mini" selected>GPT-4o Mini (Fast & Efficient)</option>
+                </optgroup>
+                <optgroup label="GPT-4">
+                  <option value="gpt-4-turbo">GPT-4 Turbo (High Performance)</option>
+                  <option value="gpt-4">GPT-4 (Legacy)</option>
+                </optgroup>
+                <optgroup label="GPT-3.5">
+                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Legacy)</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab List Section -->
+      <div class="tabs-section">
+        <div class="card">
+          <div class="card-header">
+            <h2>Open Tabs</h2>
+            <div class="tab-actions">
+              <button id="selectAll" class="button secondary small">Select All</button>
+              <button id="deselectAll" class="button secondary small">Deselect All</button>
+              <button id="summarizeSelected" class="button primary" disabled>Summarize Selected</button>
+            </div>
+          </div>
+          <div class="card-content">
+            <div id="tabList" class="tab-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Section -->
+      <div class="summary-section">
+        <div id="results" class="card">
+          <div class="card-header">
+            <h2>Summary</h2>
+          </div>
+          <div class="card-content">
+            <div id="summaryContent" class="summary-content"></div>
+            <div class="summary-actions">
+              <button id="copyBtn" class="button action-button" title="Copy to clipboard">
+                <span class="button-content">Copy</span>
+                <span class="checkmark">✓</span>
+              </button>
+              <button id="openInNewTab" class="button action-button" title="Open in new tab">
+                <span class="button-content">New Tab</span>
+              </button>
+              <button id="bulletsBtn" class="button action-button" title="Toggle bullet points">
+                <span class="button-content">Bullets</span>
+              </button>
+              <button id="clearBtn" class="button action-button" title="Clear summary">
+                <span class="button-content">Clear</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
