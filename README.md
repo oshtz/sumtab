@@ -25,12 +25,12 @@ sumtab is a browser extension that uses OpenAI's GPT models to automatically gen
 ## Installation
 
 ### Chrome
-COMING SOON!
+- Visit https://chromewebstore.google.com/detail/sumtab/ebmhpcnomlfihekgildeopmlahicgbeb
+- Click "Add to Chrome"
 
 ### Firefox
 - Visit https://addons.mozilla.org/en-US/firefox/addon/sumtab/
 - Click "Add to Firefox"
-- Follow the installation prompts
 
 ## Privacy
 - No data is stored on external servers
