@@ -1,23 +1,23 @@
-const darkModeToggle = document.getElementById("darkMode");
+// Panel mode detection
+const PANEL_MODE = document.body.getAttribute("data-panel-mode") || "popup";
+const IS_SIDEBAR = PANEL_MODE === "sidebar";
 
+const darkModeToggle = document.getElementById("darkMode");
 const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
 
 const apiConfigSection = document.getElementById("apiConfig");
 const modelStyleSection = document.getElementById("modelStyle");
+const systemPromptsSection = document.getElementById("systemPrompts");
+const panelSettingsSection = document.getElementById("panelSettings");
 
 const providerSelect = document.getElementById("providerSelect");
-
 const apiKeyInput = document.getElementById("apiKey");
-
 const openRouterKeyInput = document.getElementById("openRouterKey");
-
 const anthropicKeyInput = document.getElementById("anthropicKey");
-
 const googleKeyInput = document.getElementById("googleKey");
-
 const customApiKeyInput = document.getElementById("customApiKey");
-
 const saveApiKeyBtn = document.getElementById("saveApiKey");
+const saveProviderSettingsBtn = document.getElementById("saveProviderSettings");
 
 const modelSelect = document.getElementById("model");
 const toneSelect = document.getElementById("toneSelect");
@@ -32,15 +32,42 @@ const resultsCard = document.getElementById("results-card");
 const summaryContent = document.getElementById("summary-content");
 const summarySkeleton = document.getElementById("summarySkeleton");
 const summaryEmpty = document.getElementById("summaryEmpty");
+const summaryProgress = document.getElementById("summaryProgress");
+const progressCount = document.getElementById("progressCount");
+const progressFill = document.getElementById("progressFill");
+const progressTabName = document.getElementById("progressTabName");
+
+// Loader progress bar elements
+const progressLabel = document.getElementById("progressLabel");
+const progressBar = document.getElementById("progressBar");
+const progressCountEl = document.getElementById("progressCount");
+const progressTabEl = document.getElementById("progressTab");
+
 const openInNewTabBtn = document.getElementById("openInNewTab");
 const bulletsBtn = document.getElementById("bullets-btn");
 const copyBtn = document.getElementById("copy");
 const clearBtn = document.getElementById("clear-btn");
 const loader = document.getElementById("loader");
 const apiStatus = document.getElementById("apiStatus");
+const providerStatus = document.getElementById("providerStatus");
 const metaProvider = document.getElementById("metaProvider");
 const metaModel = document.getElementById("metaModel");
 const tabEmpty = document.getElementById("tabEmpty");
+
+// System prompt elements
+const promptSelect = document.getElementById("promptSelect");
+const promptName = document.getElementById("promptName");
+const promptContent = document.getElementById("promptContent");
+const savePromptBtn = document.getElementById("savePrompt");
+const addNewPromptBtn = document.getElementById("addNewPrompt");
+const deletePromptBtn = document.getElementById("deletePrompt");
+const promptStatus = document.getElementById("promptStatus");
+
+// Panel settings elements
+const panelModeSelect = document.getElementById("panelModeSelect");
+const switchToSidebarBtn = document.getElementById("switchToSidebar");
+const switchToPopupBtn = document.getElementById("switchToPopup");
+const panelStatus = document.getElementById("panelStatus");
 
 const DEFAULT_PROVIDER = "openai";
 const PROVIDER_LABELS = {
@@ -72,6 +99,14 @@ const PROVIDER_DEFAULT_MODEL = {
 };
 const TAB_REFRESH_DEBOUNCE_MS = 200;
 
+const DEFAULT_SYSTEM_PROMPT = {
+  id: "default",
+  name: "Default",
+  content:
+    "You are a helpful assistant that summarizes text content concisely.",
+  isDefault: true,
+};
+
 let tabs = [];
 let providerSettings = {
   selectedProvider: DEFAULT_PROVIDER,
@@ -93,13 +128,7 @@ let providerSettings = {
     lmstudio: "",
     custom: "",
   },
-  extras: {
-    openrouter: {
-      referer: "",
-      title: "sumtab",
-    },
-    custom: {},
-  },
+  extras: { openrouter: { referer: "", title: "sumtab" }, custom: {} },
   tone: "neutral",
   length: "medium",
 };
@@ -111,28 +140,41 @@ let modelRefreshToken = 0;
 let lastUserInteraction = 0;
 const USER_INTERACTION_COOLDOWN_MS = 500;
 
+let systemPromptSettings = {
+  prompts: [DEFAULT_SYSTEM_PROMPT],
+  selectedId: "default",
+};
+
+let panelSettings = {
+  defaultMode: "sidebar",
+};
+
 const collapseStates = {
   apiConfig: true,
   modelStyle: true,
+  systemPrompts: false,
+  panelSettings: false,
 };
 
 (function initTheme() {
   const savedTheme = localStorage.getItem("theme");
   if (savedTheme === "dark" || (!savedTheme && prefersDarkScheme.matches)) {
     document.body.setAttribute("data-theme", "dark");
-    darkModeToggle.checked = true;
+    if (darkModeToggle) darkModeToggle.checked = true;
   }
 })();
 
-darkModeToggle.addEventListener("change", () => {
-  if (darkModeToggle.checked) {
-    document.body.setAttribute("data-theme", "dark");
-    localStorage.setItem("theme", "dark");
-  } else {
-    document.body.removeAttribute("data-theme");
-    localStorage.setItem("theme", "light");
-  }
-});
+if (darkModeToggle) {
+  darkModeToggle.addEventListener("change", () => {
+    if (darkModeToggle.checked) {
+      document.body.setAttribute("data-theme", "dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.body.removeAttribute("data-theme");
+      localStorage.setItem("theme", "light");
+    }
+  });
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadSettings();
@@ -140,23 +182,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   restoreSummaries();
   setupEventListeners();
   updateSummarizeButtonState();
+  initSystemPrompts();
+  initPanelSettings();
 });
 
 function setupEventListeners() {
   saveApiKeyBtn?.addEventListener("click", handleSaveKeys);
-
+  saveProviderSettingsBtn?.addEventListener(
+    "click",
+    handleSaveProviderSettings,
+  );
   providerSelect?.addEventListener("change", handleProviderChange);
-
   modelSelect?.addEventListener("change", handleModelChange);
-
   toneSelect?.addEventListener("change", handleToneChange);
-
   lengthSelect?.addEventListener("change", handleLengthChange);
+
   apiConfigSection?.addEventListener("toggle", () =>
     handleCollapseToggle("apiConfig", apiConfigSection),
   );
   modelStyleSection?.addEventListener("toggle", () =>
     handleCollapseToggle("modelStyle", modelStyleSection),
+  );
+  systemPromptsSection?.addEventListener("toggle", () =>
+    handleCollapseToggle("systemPrompts", systemPromptsSection),
+  );
+  panelSettingsSection?.addEventListener("toggle", () =>
+    handleCollapseToggle("panelSettings", panelSettingsSection),
   );
 
   // Use mousedown to set interaction time BEFORE focus event fires
@@ -170,14 +221,13 @@ function setupEventListeners() {
     });
     updateSummarizeButtonState();
   });
-
   deselectAllBtn?.addEventListener("mousedown", () => {
     lastUserInteraction = Date.now();
   });
   deselectAllBtn?.addEventListener("click", () => {
-    document.querySelectorAll(".tab-checkbox").forEach((cb) => {
-      cb.checked = false;
-    });
+    document
+      .querySelectorAll(".tab-checkbox")
+      .forEach((cb) => (cb.checked = false));
     updateSummarizeButtonState();
   });
 
@@ -187,7 +237,19 @@ function setupEventListeners() {
   clearBtn?.addEventListener("click", clearSummaries);
   bulletsBtn?.addEventListener("click", toggleSummaryMode);
 
-  window.addEventListener("focus", scheduleTabRefresh);
+  // System prompt listeners
+  promptSelect?.addEventListener("change", handlePromptSelect);
+  savePromptBtn?.addEventListener("click", handleSavePrompt);
+  addNewPromptBtn?.addEventListener("click", handleAddNewPrompt);
+  deletePromptBtn?.addEventListener("click", handleDeletePrompt);
+
+  // Panel settings listeners
+  panelModeSelect?.addEventListener("change", handlePanelModeChange);
+  switchToSidebarBtn?.addEventListener("click", handleSwitchToSidebar);
+  switchToPopupBtn?.addEventListener("click", handleSwitchToPopup);
+
+  // Only refresh tabs on visibility change, not on focus
+  // Focus-based refresh causes issues with Select All button when panel is not focused
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) scheduleTabRefresh();
   });
@@ -200,6 +262,8 @@ async function loadSettings() {
     "bulletSummary",
     "isBulletMode",
     "collapseStates",
+    "systemPromptSettings",
+    "panelSettings",
   ]);
 
   if (stored.providerSettings) {
@@ -220,36 +284,239 @@ async function loadSettings() {
       },
     };
   }
-  providerSelect.value = providerSettings.selectedProvider || DEFAULT_PROVIDER;
-  providerSettings.tone = providerSettings.tone || "neutral";
-  providerSettings.length = providerSettings.length || "medium";
-  toneSelect.value = providerSettings.tone;
-  lengthSelect.value = providerSettings.length;
-  apiKeyInput.value = providerSettings.keys.openai || "";
-  openRouterKeyInput.value = providerSettings.keys.openrouter || "";
-  if (anthropicKeyInput)
-    anthropicKeyInput.value = providerSettings.keys.anthropic || "";
-  if (googleKeyInput) googleKeyInput.value = providerSettings.keys.google || "";
-  customApiKeyInput.value = providerSettings.keys.custom || "";
 
-  if (stored.collapseStates) {
-    if (
-      typeof stored.collapseStates.apiConfig === "boolean" &&
-      apiConfigSection
-    ) {
-      collapseStates.apiConfig = stored.collapseStates.apiConfig;
-      apiConfigSection.open = collapseStates.apiConfig;
-    }
-    if (
-      typeof stored.collapseStates.modelStyle === "boolean" &&
-      modelStyleSection
-    ) {
-      collapseStates.modelStyle = stored.collapseStates.modelStyle;
-      modelStyleSection.open = collapseStates.modelStyle;
+  if (stored.systemPromptSettings) {
+    systemPromptSettings = {
+      prompts: stored.systemPromptSettings.prompts || [DEFAULT_SYSTEM_PROMPT],
+      selectedId: stored.systemPromptSettings.selectedId || "default",
+    };
+    if (!systemPromptSettings.prompts.find((p) => p.id === "default")) {
+      systemPromptSettings.prompts.unshift(DEFAULT_SYSTEM_PROMPT);
     }
   }
 
+  if (stored.panelSettings) {
+    panelSettings = { ...panelSettings, ...stored.panelSettings };
+  }
+
+  if (providerSelect)
+    providerSelect.value =
+      providerSettings.selectedProvider || DEFAULT_PROVIDER;
+  providerSettings.tone = providerSettings.tone || "neutral";
+  providerSettings.length = providerSettings.length || "medium";
+  if (toneSelect) toneSelect.value = providerSettings.tone;
+  if (lengthSelect) lengthSelect.value = providerSettings.length;
+  if (apiKeyInput) apiKeyInput.value = providerSettings.keys.openai || "";
+  if (openRouterKeyInput)
+    openRouterKeyInput.value = providerSettings.keys.openrouter || "";
+  if (anthropicKeyInput)
+    anthropicKeyInput.value = providerSettings.keys.anthropic || "";
+  if (googleKeyInput) googleKeyInput.value = providerSettings.keys.google || "";
+  if (customApiKeyInput)
+    customApiKeyInput.value = providerSettings.keys.custom || "";
+
+  if (stored.collapseStates) {
+    Object.keys(collapseStates).forEach((key) => {
+      if (typeof stored.collapseStates[key] === "boolean") {
+        collapseStates[key] = stored.collapseStates[key];
+        const section = document.getElementById(key);
+        if (section) section.open = collapseStates[key];
+      }
+    });
+  }
+
   await applyProviderSelection(getCurrentProvider());
+}
+
+function initSystemPrompts() {
+  if (!promptSelect) return;
+  refreshPromptSelect();
+  const selectedPrompt = systemPromptSettings.prompts.find(
+    (p) => p.id === systemPromptSettings.selectedId,
+  );
+  if (selectedPrompt) {
+    if (promptName) promptName.value = selectedPrompt.name;
+    if (promptContent) promptContent.value = selectedPrompt.content;
+    updateDeleteButtonState();
+  }
+}
+
+function initPanelSettings() {
+  if (panelModeSelect) {
+    panelModeSelect.value = panelSettings.defaultMode || "sidebar";
+  }
+  if (IS_SIDEBAR && switchToPopupBtn) {
+    switchToPopupBtn.style.display = "block";
+  }
+  if (!IS_SIDEBAR && switchToSidebarBtn) {
+    switchToSidebarBtn.style.display = "block";
+  }
+}
+
+function refreshPromptSelect() {
+  if (!promptSelect) return;
+  promptSelect.innerHTML = "";
+  systemPromptSettings.prompts.forEach((prompt) => {
+    const option = document.createElement("option");
+    option.value = prompt.id;
+    option.textContent = prompt.name + (prompt.isDefault ? " (Default)" : "");
+    promptSelect.appendChild(option);
+  });
+  promptSelect.value = systemPromptSettings.selectedId;
+}
+
+function handlePromptSelect() {
+  const selectedId = promptSelect.value;
+  systemPromptSettings.selectedId = selectedId;
+  const prompt = systemPromptSettings.prompts.find((p) => p.id === selectedId);
+  if (prompt) {
+    if (promptName) promptName.value = prompt.name;
+    if (promptContent) promptContent.value = prompt.content;
+    updateDeleteButtonState();
+  }
+  saveSystemPromptSettings();
+}
+
+function updateDeleteButtonState() {
+  const selectedPrompt = systemPromptSettings.prompts.find(
+    (p) => p.id === systemPromptSettings.selectedId,
+  );
+  if (deletePromptBtn) {
+    deletePromptBtn.disabled = selectedPrompt?.isDefault || false;
+    deletePromptBtn.title = selectedPrompt?.isDefault
+      ? "Cannot delete the default prompt"
+      : "Delete this prompt";
+  }
+}
+
+async function handleSavePrompt() {
+  const selectedId = systemPromptSettings.selectedId;
+  const promptIndex = systemPromptSettings.prompts.findIndex(
+    (p) => p.id === selectedId,
+  );
+  if (promptIndex === -1) return;
+
+  const isDefault = systemPromptSettings.prompts[promptIndex].isDefault;
+  systemPromptSettings.prompts[promptIndex] = {
+    ...systemPromptSettings.prompts[promptIndex],
+    name: isDefault ? "Default" : promptName?.value.trim() || "Unnamed Prompt",
+    content: promptContent?.value.trim() || DEFAULT_SYSTEM_PROMPT.content,
+  };
+
+  await saveSystemPromptSettings();
+  refreshPromptSelect();
+  updatePromptStatus("Prompt saved", true);
+}
+
+async function handleAddNewPrompt() {
+  const newId = "prompt_" + Date.now();
+  const newPrompt = {
+    id: newId,
+    name: "New Prompt",
+    content: "You are a helpful assistant that summarizes text content.",
+    isDefault: false,
+  };
+
+  systemPromptSettings.prompts.push(newPrompt);
+  systemPromptSettings.selectedId = newId;
+
+  await saveSystemPromptSettings();
+  refreshPromptSelect();
+  if (promptName) promptName.value = newPrompt.name;
+  if (promptContent) promptContent.value = newPrompt.content;
+  updateDeleteButtonState();
+  updatePromptStatus("New prompt created", true);
+}
+
+async function handleDeletePrompt() {
+  const selectedId = systemPromptSettings.selectedId;
+  const prompt = systemPromptSettings.prompts.find((p) => p.id === selectedId);
+
+  if (prompt?.isDefault) {
+    updatePromptStatus("Cannot delete the default prompt", false);
+    return;
+  }
+
+  systemPromptSettings.prompts = systemPromptSettings.prompts.filter(
+    (p) => p.id !== selectedId,
+  );
+  systemPromptSettings.selectedId = "default";
+
+  await saveSystemPromptSettings();
+  refreshPromptSelect();
+  initSystemPrompts();
+  updatePromptStatus("Prompt deleted", true);
+}
+
+async function saveSystemPromptSettings() {
+  await browser.storage.local.set({ systemPromptSettings });
+}
+
+function updatePromptStatus(message, success) {
+  if (!promptStatus) return;
+  promptStatus.textContent = message;
+  promptStatus.className = `api-status ${success ? "success" : "error"}`;
+  setTimeout(() => {
+    promptStatus.textContent = "";
+    promptStatus.className = "api-status";
+  }, 3000);
+}
+
+async function handlePanelModeChange() {
+  if (!panelModeSelect) return;
+  panelSettings.defaultMode = panelModeSelect.value;
+  await savePanelSettings();
+  updatePanelStatus(`Default mode set to ${panelSettings.defaultMode}`, true);
+}
+
+async function handleSwitchToSidebar() {
+  if (!browser.sidebarAction?.open) {
+    updatePanelStatus("Sidebar switching is not supported in this browser.", false);
+    return;
+  }
+  try {
+    await browser.sidebarAction.open();
+    updatePanelStatus("Opening sidebar...", true);
+    if (!IS_SIDEBAR) {
+      setTimeout(() => window.close(), 500);
+    }
+  } catch (error) {
+    updatePanelStatus(`Failed to open sidebar: ${error.message}`, false);
+  }
+}
+
+async function handleSwitchToPopup() {
+  if (!browser.browserAction?.openPopup) {
+    updatePanelStatus("Popup switching is not supported in this browser.", false);
+    return;
+  }
+  try {
+    await browser.browserAction.openPopup();
+    updatePanelStatus("Opening popup...", true);
+  } catch (error) {
+    updatePanelStatus(`Failed to open popup: ${error.message}`, false);
+  }
+}
+
+async function savePanelSettings() {
+  await browser.storage.local.set({ panelSettings });
+}
+
+function updatePanelStatus(message, success) {
+  if (!panelStatus) return;
+  panelStatus.textContent = message;
+  panelStatus.className = `api-status ${success ? "success" : "error"}`;
+  setTimeout(() => {
+    panelStatus.textContent = "";
+    panelStatus.className = "api-status";
+  }, 3000);
+}
+
+function getActiveSystemPrompt() {
+  const prompt = systemPromptSettings.prompts.find(
+    (p) => p.id === systemPromptSettings.selectedId,
+  );
+  return prompt?.content || DEFAULT_SYSTEM_PROMPT.content;
 }
 
 function getModelListExtras(provider) {
@@ -336,9 +603,7 @@ async function refreshModelOptions(provider, options = {}) {
     opt.textContent = "Enter a custom model via settings";
     modelSelect.appendChild(opt);
   }
-  if (desired !== undefined) {
-    modelSelect.value = desired;
-  }
+  if (desired !== undefined) modelSelect.value = desired;
 }
 
 async function applyProviderSelection(provider, options = {}) {
@@ -361,21 +626,17 @@ async function applyProviderSelection(provider, options = {}) {
     if (!el) return;
     const group = el.closest(".input-group");
     if (!group) return;
-    if (groups[provider]?.includes(id)) {
-      group.style.display = "";
-    } else {
-      group.style.display = "none";
-    }
+    group.style.display = groups[provider]?.includes(id) ? "" : "none";
   });
   await refreshModelOptions(provider, options);
   updateSummarizeButtonState();
-  updateMetaBadges(provider, modelSelect.value);
+  updateMetaBadges(provider, modelSelect?.value);
   saveProviderSettings();
 }
 
 function getCurrentProvider() {
   return (
-    providerSelect.value ||
+    providerSelect?.value ||
     providerSettings.selectedProvider ||
     DEFAULT_PROVIDER
   );
@@ -397,16 +658,8 @@ function getCurrentApiKey() {
 function getStyleExtras() {
   const tone = providerSettings.tone || "neutral";
   const length = providerSettings.length || "medium";
-  const temperatureMap = {
-    concise: 0.4,
-    neutral: 0.7,
-    detailed: 0.9,
-  };
-  const maxTokensMap = {
-    short: 200,
-    medium: 400,
-    long: 800,
-  };
+  const temperatureMap = { concise: 0.4, neutral: 0.7, detailed: 0.9 };
+  const maxTokensMap = { short: 200, medium: 400, long: 800 };
   return {
     tone,
     length,
@@ -418,13 +671,8 @@ function getStyleExtras() {
 function getExtras(provider) {
   const styleExtras = getStyleExtras();
   if (provider === "openrouter") {
-    return {
-      ...styleExtras,
-      referer: "",
-      title: "sumtab",
-    };
+    return { ...styleExtras, referer: "", title: "sumtab" };
   }
-
   return styleExtras;
 }
 
@@ -438,13 +686,11 @@ function showSummarySkeleton(show) {
 function showTabSkeletons(count = 3) {
   if (!tabList) return;
   tabList.innerHTML = "";
-  for (let i = 0; i < count; i += 1) {
+  for (let i = 0; i < count; i++) {
     const skel = document.createElement("div");
     skel.className = "tab-item skeleton";
-    skel.innerHTML = `
-        <div class="tab-favicon"></div>
-        <div class="tab-title skeleton-bar"></div>
-      `;
+    skel.innerHTML =
+      '<div class="tab-favicon"></div><div class="tab-title skeleton-bar"></div>';
     tabList.appendChild(skel);
   }
 }
@@ -471,7 +717,7 @@ async function refreshTabs() {
   }
   isRefreshingTabs = true;
   try {
-    await loadTabs(true); // Preserve selection during refresh
+    await loadTabs();
   } finally {
     isRefreshingTabs = false;
     if (pendingTabRefresh && !document.hidden) {
@@ -521,21 +767,21 @@ function setTabStatus(tabId, message, isError = false) {
 }
 
 async function handleSaveKeys() {
-  providerSettings.keys.openai = apiKeyInput.value.trim();
-  providerSettings.keys.openrouter = openRouterKeyInput.value.trim();
-  if (anthropicKeyInput)
-    providerSettings.keys.anthropic = anthropicKeyInput.value.trim();
-  if (googleKeyInput)
-    providerSettings.keys.google = googleKeyInput.value.trim();
-  providerSettings.keys.custom = customApiKeyInput.value.trim();
-  providerSettings.extras.openrouter = {
-    referer: "",
-    title: "sumtab",
-  };
+  providerSettings.keys.openai = apiKeyInput?.value.trim() || "";
+  providerSettings.keys.openrouter = openRouterKeyInput?.value.trim() || "";
+  providerSettings.keys.anthropic = anthropicKeyInput?.value.trim() || "";
+  providerSettings.keys.google = googleKeyInput?.value.trim() || "";
+  providerSettings.keys.custom = customApiKeyInput?.value.trim() || "";
+  providerSettings.extras.openrouter = { referer: "", title: "sumtab" };
   await saveProviderSettings();
   await refreshModelOptions(getCurrentProvider(), { forceRefresh: true });
   updateApiStatus("Keys saved", true);
   updateSummarizeButtonState();
+}
+
+async function handleSaveProviderSettings() {
+  await saveProviderSettings();
+  updateProviderStatus("Provider settings saved", true);
 }
 
 async function handleProviderChange() {
@@ -545,18 +791,19 @@ async function handleProviderChange() {
 
 function handleModelChange() {
   const provider = getCurrentProvider();
-  providerSettings.modelByProvider[provider] = modelSelect.value;
+  if (modelSelect)
+    providerSettings.modelByProvider[provider] = modelSelect.value;
   saveProviderSettings();
-  updateMetaBadges(provider, modelSelect.value);
+  updateMetaBadges(provider, modelSelect?.value);
 }
 
 function handleToneChange() {
-  providerSettings.tone = toneSelect.value;
+  if (toneSelect) providerSettings.tone = toneSelect.value;
   saveProviderSettings();
 }
 
 function handleLengthChange() {
-  providerSettings.length = lengthSelect.value;
+  if (lengthSelect) providerSettings.length = lengthSelect.value;
   saveProviderSettings();
 }
 
@@ -566,11 +813,9 @@ async function saveProviderSettings() {
 
 function updateSummarizeButtonState() {
   const hasSelection = getSelectedTabs().length > 0;
-
   const provider = getCurrentProvider();
   const hasKey = !!getCurrentApiKey();
   const requiresKey = PROVIDER_REQUIRES_KEY[provider] !== false;
-
   if (summarizeBtn)
     summarizeBtn.disabled = !(hasSelection && (!requiresKey || hasKey));
 }
@@ -581,26 +826,19 @@ function handleCollapseToggle(key, el) {
   browser.storage.local.set({ collapseStates });
 }
 
-function getSelectedTabIds() {
-  const checkboxes = document.querySelectorAll(".tab-checkbox:checked");
-  return new Set(
-    Array.from(checkboxes).map((cb) => parseInt(cb.dataset.tabId, 10)),
-  );
-}
-
-async function loadTabs(preserveSelection = false) {
-  const previousSelection = preserveSelection ? getSelectedTabIds() : new Set();
+async function loadTabs() {
   try {
     showTabSkeletons();
     const allTabs = await browser.tabs.query({});
     tabs = allTabs;
-    renderTabs(tabs, previousSelection);
+    renderTabs(tabs);
   } catch (error) {
     updateApiStatus("Error loading tabs: " + error.message, false);
   }
 }
 
-function renderTabs(tabArray = [], previousSelection = new Set()) {
+function renderTabs(tabArray = []) {
+  if (!tabList) return;
   tabList.innerHTML = "";
   if (!tabArray.length) {
     if (tabEmpty) tabEmpty.style.display = "block";
@@ -610,14 +848,6 @@ function renderTabs(tabArray = [], previousSelection = new Set()) {
   if (tabEmpty) tabEmpty.style.display = "none";
   tabArray.forEach((tab) => {
     const tabItem = createTabItem(tab);
-    // Restore selection if tab was previously selected
-    if (previousSelection.has(tab.id)) {
-      const checkbox = tabItem.querySelector(".tab-checkbox");
-      if (checkbox) {
-        checkbox.checked = true;
-        tabItem.classList.add("selected");
-      }
-    }
     tabList.appendChild(tabItem);
   });
   updateSummarizeButtonState();
@@ -625,31 +855,21 @@ function renderTabs(tabArray = [], previousSelection = new Set()) {
 
 function createTabItem(tab) {
   const tabItem = document.createElement("div");
-
   tabItem.className = "tab-item";
+  tabItem.setAttribute("data-tab-id", tab.id);
 
   const checkbox = document.createElement("input");
-
   checkbox.type = "checkbox";
-
   checkbox.className = "tab-checkbox";
-
   checkbox.dataset.tabId = tab.id;
 
   const favicon = document.createElement("img");
-
   favicon.src = tab.favIconUrl || "default-favicon.png";
-
   favicon.className = "tab-favicon";
-
-  favicon.onerror = () => {
-    favicon.src = "default-favicon.png";
-  };
+  favicon.onerror = () => (favicon.src = "default-favicon.png");
 
   const title = document.createElement("span");
-
   title.className = "tab-title";
-
   title.textContent = tab.title;
 
   const statusSpan = document.createElement("span");
@@ -658,11 +878,8 @@ function createTabItem(tab) {
   statusSpan.style.display = "none";
 
   tabItem.appendChild(checkbox);
-
   tabItem.appendChild(favicon);
-
   tabItem.appendChild(title);
-
   tabItem.appendChild(statusSpan);
 
   tabItem.addEventListener("click", (e) => {
@@ -691,14 +908,78 @@ function getSelectedTabs() {
 }
 
 function toggleLoader(show) {
-  loader.style.display = show ? "block" : "none";
+  if (loader) loader.style.display = show ? "block" : "none";
   const main = document.getElementById("main-content");
   if (main) main.style.filter = show ? "blur(4px)" : "none";
+  if (show) {
+    window.scrollTo({ top: 0 });
+  }
+  document.body.classList.toggle("loading", show);
 }
 
 function updateApiStatus(message, success) {
+  if (!apiStatus) return;
   apiStatus.textContent = message;
-  apiStatus.style.color = success ? "var(--primary-color)" : "#ef4444";
+  apiStatus.className = `api-status ${success ? "success" : "error"}`;
+  setTimeout(() => {
+    apiStatus.textContent = "";
+    apiStatus.className = "api-status";
+  }, 3000);
+}
+
+function updateProviderStatus(message, success) {
+  if (!providerStatus) return;
+  providerStatus.textContent = message;
+  providerStatus.className = `api-status ${success ? "success" : "error"}`;
+  setTimeout(() => {
+    providerStatus.textContent = "";
+    providerStatus.className = "api-status";
+  }, 3000);
+}
+
+// Loader progress bar functions
+function updateLoaderProgress(current, total, tabTitle = "") {
+  if (!progressLabel || !progressBar || !progressCountEl || !progressTabEl)
+    return;
+
+  const percentage = total > 0 ? (current / total) * 100 : 0;
+  progressLabel.textContent =
+    current <= total ? `Summarizing tabs...` : `Complete!`;
+  progressBar.style.width = `${percentage}%`;
+  progressCountEl.textContent = `${current} / ${total}`;
+
+  if (tabTitle && tabTitle !== "Loading...") {
+    progressTabEl.innerHTML = `Processing: <strong>${escapeHtml(truncateText(tabTitle, 40))}</strong>`;
+    progressTabEl.style.display = "block";
+  } else if (tabTitle === "Loading...") {
+    progressTabEl.textContent = "Loading tab content...";
+    progressTabEl.style.display = "block";
+  } else {
+    progressTabEl.style.display = "none";
+  }
+}
+
+function resetLoaderProgress() {
+  if (!progressLabel || !progressBar || !progressCountEl || !progressTabEl)
+    return;
+  progressLabel.textContent = "Summarizing tabs...";
+  progressBar.style.width = "0%";
+  progressCountEl.textContent = "0 / 0";
+  progressTabEl.textContent = "";
+  progressTabEl.style.display = "none";
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Helper function to truncate text
+function truncateText(text, maxLength) {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength - 3) + "...";
 }
 
 async function summarizeSelectedTabs() {
@@ -711,26 +992,31 @@ async function summarizeSelectedTabs() {
   const model = getCurrentModel();
   const extras = { ...getExtras(provider) };
   const apiKey = getCurrentApiKey();
+  const systemPrompt = getActiveSystemPrompt();
   const requiresKey = PROVIDER_REQUIRES_KEY[provider] !== false;
+
   if (requiresKey && !apiKey) {
     updateApiStatus("Please enter an API key", false);
     return;
   }
 
   if (summaryEmpty) summaryEmpty.style.display = "none";
-  summarizeBtn.disabled = true;
+  if (summarizeBtn) summarizeBtn.disabled = true;
   isSummarizingTabs = true;
   toggleLoader(true);
   showSummarySkeleton(true);
+  resetLoaderProgress();
+  updateLoaderProgress(0, selected.length, "");
   updateApiStatus("Summarizing tabs...", true);
 
   try {
     const summaries = [];
     const total = selected.length;
 
-    for (let index = 0; index < selected.length; index += 1) {
+    for (let index = 0; index < selected.length; index++) {
       const tab = selected[index];
       try {
+        updateLoaderProgress(index + 1, total, "Loading...");
         updateApiStatus(
           `Summarizing ${index + 1} of ${total} tab${total === 1 ? "" : "s"}...`,
           true,
@@ -742,11 +1028,11 @@ async function summarizeSelectedTabs() {
           model,
           provider,
           extras,
+          systemPrompt,
         );
-
+        updateLoaderProgress(index + 1, total, tab.title);
         if (summary) {
           summaries.push(`### ${tab.title}\n\n${summary}\n`);
-
           setTabStatus(tab.id, "Done", false);
         } else {
           setTabStatus(tab.id, "No summary", true);
@@ -755,7 +1041,6 @@ async function summarizeSelectedTabs() {
         setTabStatus(tab.id, error.message, true);
         updateApiStatus(
           `Error summarizing ${tab.title}: ${error.message}`,
-
           false,
         );
       }
@@ -763,28 +1048,24 @@ async function summarizeSelectedTabs() {
 
     if (summaries.length > 0) {
       const combined = summaries.join("\n\n---\n\n");
-
       setSummaryContent(combined, false);
-
       await browser.storage.local.set({
         regularSummary: combined,
-
         isBulletMode: false,
       });
-
       updateApiStatus("Summaries generated successfully", true);
     } else {
       updateApiStatus("No summaries were generated", false);
-
       if (resultsCard) resultsCard.style.display = "block";
       if (summaryEmpty) summaryEmpty.style.display = "block";
     }
   } catch (error) {
     updateApiStatus("Error: " + error.message, false);
   } finally {
-    summarizeBtn.disabled = false;
+    if (summarizeBtn) summarizeBtn.disabled = false;
     toggleLoader(false);
     showSummarySkeleton(false);
+    resetLoaderProgress();
     isSummarizingTabs = false;
     if (pendingTabRefresh && !document.hidden) {
       pendingTabRefresh = false;
@@ -793,7 +1074,14 @@ async function summarizeSelectedTabs() {
   }
 }
 
-async function summarizeTab(tab, apiKey, model, provider, extras) {
+async function summarizeTab(
+  tab,
+  apiKey,
+  model,
+  provider,
+  extras,
+  systemPrompt,
+) {
   try {
     await browser.tabs
       .executeScript(tab.id, { file: "content.js" })
@@ -812,6 +1100,7 @@ async function summarizeTab(tab, apiKey, model, provider, extras) {
       model,
       provider,
       extras,
+      systemPrompt,
     });
     if (apiResponse.error) {
       const err = apiResponse.error;
@@ -828,8 +1117,9 @@ async function summarizeTab(tab, apiKey, model, provider, extras) {
 }
 
 function setSummaryContent(content, isBulletMode) {
+  if (!summaryContent) return;
   sanitizeAndSetContent(summaryContent, content, isBulletMode);
-  resultsCard.style.display = "block";
+  if (resultsCard) resultsCard.style.display = "block";
   if (summaryEmpty) summaryEmpty.style.display = "none";
   showSummarySkeleton(false);
 }
@@ -869,6 +1159,17 @@ function sanitizeAndSetContent(element, content, isBulletMode = false) {
   element.appendChild(container);
 }
 
+function updateBulletsButton(label, title) {
+  if (!bulletsBtn) return;
+  const buttonContent = bulletsBtn.querySelector(".button-content");
+  if (buttonContent) {
+    buttonContent.textContent = label;
+  } else {
+    bulletsBtn.textContent = label;
+  }
+  if (title) bulletsBtn.title = title;
+}
+
 async function convertToBulletPoints() {
   const stored = await browser.storage.local.get([
     "regularSummary",
@@ -877,14 +1178,12 @@ async function convertToBulletPoints() {
   ]);
   if (stored.bulletSummary) {
     setSummaryContent(stored.bulletSummary, true);
-    bulletsBtn.classList.add("active");
-    bulletsBtn.textContent = "Summary";
-    bulletsBtn.title = "Toggle back to summary";
+    if (bulletsBtn) bulletsBtn.classList.add("active");
     await browser.storage.local.set({ isBulletMode: true });
     return;
   }
 
-  const regular = stored.regularSummary || summaryContent.textContent;
+  const regular = stored.regularSummary || summaryContent?.textContent;
   if (!regular) {
     updateApiStatus("No content to convert", false);
     return;
@@ -903,7 +1202,7 @@ async function convertToBulletPoints() {
 
   try {
     toggleLoader(true);
-    bulletsBtn.disabled = true;
+    if (bulletsBtn) bulletsBtn.disabled = true;
     updateApiStatus("Converting to bullet points...", true);
 
     const response = await browser.runtime.sendMessage({
@@ -932,15 +1231,16 @@ async function convertToBulletPoints() {
     });
 
     setSummaryContent(bulletPoints, true);
-    bulletsBtn.classList.add("active");
-    bulletsBtn.textContent = "Summary";
-    bulletsBtn.title = "Toggle back to summary";
+    if (bulletsBtn) {
+      bulletsBtn.classList.add("active");
+      updateBulletsButton("Summary", "Toggle back to summary");
+    }
     updateApiStatus("Converted to bullet points", true);
   } catch (error) {
     updateApiStatus("Error converting: " + error.message, false);
   } finally {
     toggleLoader(false);
-    bulletsBtn.disabled = false;
+    if (bulletsBtn) bulletsBtn.disabled = false;
   }
 }
 
@@ -950,13 +1250,15 @@ async function toggleSummaryMode() {
     "bulletSummary",
     "isBulletMode",
   ]);
-  const isBullet = bulletsBtn.classList.contains("active");
+  const isBullet = bulletsBtn?.classList.contains("active");
 
   if (isBullet) {
+    // Switch back to regular summary
     setSummaryContent(stored.regularSummary || "", false);
-    bulletsBtn.classList.remove("active");
-    bulletsBtn.textContent = "Bullets";
-    bulletsBtn.title = "Convert to bullet points";
+    if (bulletsBtn) {
+      bulletsBtn.classList.remove("active");
+      updateBulletsButton("Bullets", "Convert to bullet points");
+    }
     await browser.storage.local.set({ isBulletMode: false });
     updateApiStatus("Switched to summary view", true);
   } else {
@@ -975,10 +1277,11 @@ async function toggleSummaryMode() {
     }
 
     if (stored.bulletSummary) {
-      setSummaryContent(stored.bulletSummary || "", true);
-      bulletsBtn.classList.add("active");
-      bulletsBtn.textContent = "Summary";
-      bulletsBtn.title = "Toggle back to summary";
+      setSummaryContent(stored.bulletSummary, true);
+      if (bulletsBtn) {
+        bulletsBtn.classList.add("active");
+        updateBulletsButton("Summary", "Toggle back to summary");
+      }
       await browser.storage.local.set({ isBulletMode: true });
       resetLoaderProgress();
     } else {
@@ -986,8 +1289,7 @@ async function toggleSummaryMode() {
       resetLoaderProgress();
       // Update button to show "Summary" when in bullet mode
       if (bulletsBtn && bulletsBtn.classList.contains("active")) {
-        bulletsBtn.textContent = "Summary";
-        bulletsBtn.title = "Toggle back to summary";
+        updateBulletsButton("Summary", "Toggle back to summary");
       }
     }
   }
@@ -998,16 +1300,15 @@ function restoreSummaries() {
     .get(["regularSummary", "bulletSummary", "isBulletMode"])
     .then((stored) => {
       if (stored.regularSummary || stored.bulletSummary) {
-        resultsCard.style.display = "block";
+        if (resultsCard) resultsCard.style.display = "block";
         const useBullets = stored.isBulletMode && stored.bulletSummary;
         setSummaryContent(
           useBullets ? stored.bulletSummary : stored.regularSummary,
           !!useBullets,
         );
-        if (useBullets) {
+        if (useBullets && bulletsBtn) {
           bulletsBtn.classList.add("active");
-          bulletsBtn.textContent = "Summary";
-          bulletsBtn.title = "Toggle back to summary";
+          updateBulletsButton("Summary", "Toggle back to summary");
         }
         updateApiStatus("Loaded cached summary", true);
       } else {
@@ -1018,12 +1319,14 @@ function restoreSummaries() {
 }
 
 async function clearSummaries() {
-  summaryContent.innerHTML = "";
-  resultsCard.style.display = "block";
-  bulletsBtn.classList.remove("active");
-  bulletsBtn.textContent = "Bullets";
-  bulletsBtn.title = "Convert to bullet points";
+  if (summaryContent) summaryContent.innerHTML = "";
+  if (resultsCard) resultsCard.style.display = "block";
+  if (bulletsBtn) bulletsBtn.classList.remove("active");
   if (summaryEmpty) summaryEmpty.style.display = "block";
+  if (bulletsBtn) {
+    bulletsBtn.classList.remove("active");
+    updateBulletsButton("Bullets", "Convert to bullet points");
+  }
   await browser.storage.local.remove([
     "regularSummary",
     "bulletSummary",
@@ -1033,15 +1336,17 @@ async function clearSummaries() {
 }
 
 async function copySummary() {
-  const content = summaryContent.textContent;
+  const content = summaryContent?.textContent;
   if (!content) {
     updateApiStatus("No content to copy", false);
     return;
   }
   try {
     await navigator.clipboard.writeText(content);
-    copyBtn.classList.add("copy-success");
-    setTimeout(() => copyBtn.classList.remove("copy-success"), 1500);
+    if (copyBtn) {
+      copyBtn.classList.add("copied");
+      setTimeout(() => copyBtn.classList.remove("copied"), 2000);
+    }
     updateApiStatus("Copied to clipboard", true);
   } catch (error) {
     updateApiStatus("Failed to copy", false);
@@ -1049,7 +1354,7 @@ async function copySummary() {
 }
 
 function openInNewTab() {
-  const content = summaryContent.textContent;
+  const content = summaryContent?.textContent;
   if (!content) {
     updateApiStatus("No content to open", false);
     return;

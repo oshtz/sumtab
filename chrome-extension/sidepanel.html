@@ -5,10 +5,18 @@
         <link rel="stylesheet" href="styles.css" />
         <meta charset="UTF-8" />
     </head>
-    <body data-panel-mode="popup">
+    <body data-panel-mode="sidebar">
         <div id="loader" class="loader" style="display: none">
             <div class="hill"></div>
             <div class="box"></div>
+            <div class="loader-progress">
+                <div class="progress-label" id="progressLabel">Summarizing tabs...</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                </div>
+                <div class="progress-count" id="progressCount">0 / 0</div>
+                <div class="progress-tab" id="progressTab"></div>
+            </div>
         </div>
 
         <div id="main-content">
@@ -16,7 +24,7 @@
                 <div class="header hero">
                     <div class="hero-copy">
                         <div class="logo-row" style="justify-content: center; text-align: center;">
-                            <img src="icons/logo.png" alt="sumtab" class="logo" />
+                            <img src="logo.png" alt="sumtab" class="logo" />
                         </div>
 
                         <div class="meta-row" style="flex-wrap: wrap; gap: 6px; justify-content: center; text-align: center;">
@@ -154,7 +162,7 @@
                                 <div class="api-status" id="apiStatus"></div>
                                 <div class="api-status" id="providerStatus"></div>
                                 <div class="api-status unsaved-hint" id="unsavedHint" style="display: none">
-                                    Unsaved changes - click "Save" to apply.
+                                    Unsaved changes — click "Save" to apply.
                                 </div>
                                 <div class="api-status error" id="inlineError" aria-live="polite"></div>
                             </div>
@@ -168,11 +176,11 @@
                             </summary>
                             <div class="card-content">
                                 <div class="input-group">
-                                <label for="model">Model</label>
-                                <div class="select-wrap">
-                                    <select id="model" class="select">
-                                        <option value="">Loading models...</option>
-                                    </select>
+                                    <label for="modelSelect">Model</label>
+                                    <div class="select-wrap">
+                                        <select id="modelSelect" class="select">
+                                            <option value="">Loading models...</option>
+                                        </select>
                                         <svg xmlns="http://www.w3.org/2000/svg" class="select-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <polyline points="6 9 12 15 18 9"></polyline>
                                         </svg>
@@ -277,8 +285,8 @@
                                     </p>
                                 </div>
                                 <div class="panel-switch-actions" style="margin-top: 8px;">
-                                    <button id="switchToSidebar" class="button secondary">
-                                        Open as Sidebar
+                                    <button id="switchToPopup" class="button secondary">
+                                        Open as Popup
                                     </button>
                                 </div>
                                 <div class="api-status" id="panelStatus"></div>
@@ -308,7 +316,7 @@
                                     Deselect All
                                 </button>
                                 <button
-                                    id="summarizeBtn"
+                                    id="summarizeSelected"
                                     class="button primary"
                                     disabled
                                 >
@@ -342,16 +350,30 @@
                 </div>
 
                 <div class="summary-section">
-                    <div id="results-card" class="card" style="display: none">
+                    <div id="results" class="card">
                         <div class="card-header">
                             <h2>Summary</h2>
                         </div>
                         <div class="card-content">
                             <div
-                                id="summary-content"
+                                id="summaryProgress"
+                                class="summary-progress"
+                                style="display: none;"
+                            >
+                                <div class="progress-header">
+                                    <span class="progress-label">Summarizing tabs...</span>
+                                    <span class="progress-count" id="progressCount">0 / 0</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                                </div>
+                                <div class="progress-tab-name" id="progressTabName"></div>
+                            </div>
+                            <div
+                                id="summaryContent"
                                 class="summary-content"
                             ></div>
-                            <div id="summarySkeleton" class="summary-content skeleton" style="display: none">
+                            <div id="summarySkeleton" class="summary-content skeleton" style="display: none;">
                                 <div class="skeleton-bar" style="width: 80%; height: 12px; margin-bottom: 8px;"></div>
                                 <div class="skeleton-bar" style="width: 60%; height: 12px; margin-bottom: 8px;"></div>
                                 <div class="skeleton-bar" style="width: 90%; height: 12px;"></div>
@@ -362,7 +384,7 @@
                             </div>
                             <div class="summary-actions">
                                 <button
-                                    id="copy"
+                                    id="copyBtn"
                                     class="button action-button"
                                     title="Copy to clipboard"
                                 >
@@ -377,14 +399,14 @@
                                     <span class="button-content">New Tab</span>
                                 </button>
                                 <button
-                                    id="bullets-btn"
+                                    id="bulletsBtn"
                                     class="button action-button"
                                     title="Toggle bullet points"
                                 >
                                     <span class="button-content">Bullets</span>
                                 </button>
                                 <button
-                                    id="clear-btn"
+                                    id="clearBtn"
                                     class="button action-button"
                                     title="Clear summary"
                                 >
@@ -400,7 +422,3 @@
         <script src="panel.js"></script>
     </body>
 </html>
-
-
-
-

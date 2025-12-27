@@ -1,9 +1,15 @@
+// Panel mode detection
+const PANEL_MODE = document.body.getAttribute("data-panel-mode") || "sidebar";
+const IS_SIDEBAR = PANEL_MODE === "sidebar";
+
 const darkModeToggle = document.getElementById("darkMode");
 const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
 
 const tabList = document.getElementById("tabList");
 const apiConfigSection = document.getElementById("apiConfig");
 const modelStyleSection = document.getElementById("modelStyle");
+const systemPromptsSection = document.getElementById("systemPrompts");
+const panelSettingsSection = document.getElementById("panelSettings");
 const apiKeyInput = document.getElementById("apiKey");
 const openRouterKeyInput = document.getElementById("openRouterKey");
 const anthropicKeyInput = document.getElementById("anthropicKey");
@@ -26,6 +32,11 @@ const bulletsBtn = document.getElementById("bulletsBtn");
 const copyBtn = document.getElementById("copyBtn");
 const loader = document.getElementById("loader");
 const apiStatus = document.getElementById("apiStatus");
+
+// Loader progress bar elements
+const progressLabel = document.getElementById("progressLabel");
+const progressBar = document.getElementById("progressBar");
+const progressTab = document.getElementById("progressTab");
 const providerStatus = document.getElementById("providerStatus");
 const modelStatus = document.getElementById("modelStatus");
 const toneSelect = document.getElementById("toneSelect");
@@ -34,12 +45,36 @@ const metaProvider = document.getElementById("metaProvider");
 const metaModel = document.getElementById("metaModel");
 const tabEmpty = document.getElementById("tabEmpty");
 const summaryEmpty = document.getElementById("summaryEmpty");
+const unsavedHint = document.getElementById("unsavedHint");
+const inlineError = document.getElementById("inlineError");
+
+// Summary section progress bar elements
+const summaryProgress = document.getElementById("summaryProgress");
+const progressCount = document.getElementById("progressCount");
+const progressFill = document.getElementById("progressFill");
+const progressTabName = document.getElementById("progressTabName");
+
+// System prompt elements
+const promptSelect = document.getElementById("promptSelect");
+const promptName = document.getElementById("promptName");
+const promptContent = document.getElementById("promptContent");
+const savePromptBtn = document.getElementById("savePrompt");
+const addNewPromptBtn = document.getElementById("addNewPrompt");
+const deletePromptBtn = document.getElementById("deletePrompt");
+const promptStatus = document.getElementById("promptStatus");
+
+// Panel settings elements
+const panelModeSelect = document.getElementById("panelModeSelect");
+const switchToSidebarBtn = document.getElementById("switchToSidebar");
+const switchToPopupBtn = document.getElementById("switchToPopup");
+const panelStatus = document.getElementById("panelStatus");
+
 const collapseStates = {
   apiConfig: true,
   modelStyle: true,
+  systemPrompts: false,
+  panelSettings: false,
 };
-const unsavedHint = document.getElementById("unsavedHint");
-const inlineError = document.getElementById("inlineError");
 
 const DEFAULT_PROVIDER = "openai";
 const PROVIDER_LABELS = {
@@ -74,6 +109,15 @@ const PROVIDER_DEFAULT_MODEL = {
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 50;
 const TAB_REFRESH_DEBOUNCE_MS = 200;
+
+// Default system prompt
+const DEFAULT_SYSTEM_PROMPT = {
+  id: "default",
+  name: "Default",
+  content:
+    "You are a helpful assistant that summarizes text content concisely.",
+  isDefault: true,
+};
 
 let tabs = [];
 let summaryCache = {
@@ -120,6 +164,16 @@ let providerSettings = {
   length: "medium",
 };
 
+let systemPromptSettings = {
+  prompts: [DEFAULT_SYSTEM_PROMPT],
+  selectedId: "default",
+};
+
+let panelSettings = {
+  defaultMode: "sidebar",
+  sidebarWasOpen: true,
+};
+
 (function initTheme() {
   const savedTheme = localStorage.getItem("theme");
   if (savedTheme === "dark" || (!savedTheme && prefersDarkScheme.matches)) {
@@ -137,6 +191,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadTabs();
   setupEventListeners();
   updateSummarizeButtonState();
+  initSystemPrompts();
+  initPanelSettings();
 });
 
 function setupEventListeners() {
@@ -169,6 +225,17 @@ function setupEventListeners() {
       handleCollapseToggle("modelStyle", modelStyleSection),
     );
   }
+  if (systemPromptsSection) {
+    systemPromptsSection.addEventListener("toggle", () =>
+      handleCollapseToggle("systemPrompts", systemPromptsSection),
+    );
+  }
+  if (panelSettingsSection) {
+    panelSettingsSection.addEventListener("toggle", () =>
+      handleCollapseToggle("panelSettings", panelSettingsSection),
+    );
+  }
+
   // Use mousedown to set interaction time BEFORE focus event fires
   selectAllBtn?.addEventListener("mousedown", () => {
     lastUserInteraction = Date.now();
@@ -194,7 +261,19 @@ function setupEventListeners() {
   clearBtn?.addEventListener("click", handleClear);
   bulletsBtn?.addEventListener("click", toggleSummaryMode);
 
-  window.addEventListener("focus", scheduleTabRefresh);
+  // System prompt listeners
+  promptSelect?.addEventListener("change", handlePromptSelect);
+  savePromptBtn?.addEventListener("click", handleSavePrompt);
+  addNewPromptBtn?.addEventListener("click", handleAddNewPrompt);
+  deletePromptBtn?.addEventListener("click", handleDeletePrompt);
+
+  // Panel settings listeners
+  panelModeSelect?.addEventListener("change", handlePanelModeChange);
+  switchToSidebarBtn?.addEventListener("click", handleSwitchToSidebar);
+  switchToPopupBtn?.addEventListener("click", handleSwitchToPopup);
+
+  // Only refresh tabs on visibility change, not on focus
+  // Focus-based refresh causes issues with Select All button when panel is not focused
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) scheduleTabRefresh();
   });
@@ -207,7 +286,10 @@ async function loadSettings() {
     "apiKey",
     "model",
     "collapseStates",
+    "systemPromptSettings",
+    "panelSettings",
   ]);
+
   if (stored.providerSettings) {
     providerSettings = {
       ...providerSettings,
@@ -226,13 +308,27 @@ async function loadSettings() {
       },
     };
   } else {
-    // migrate legacy single apiKey/model if present
     if (stored.apiKey) {
       providerSettings.keys.openai = stored.apiKey;
     }
     if (stored.model) {
       providerSettings.modelByProvider.openai = stored.model;
     }
+  }
+
+  if (stored.systemPromptSettings) {
+    systemPromptSettings = {
+      prompts: stored.systemPromptSettings.prompts || [DEFAULT_SYSTEM_PROMPT],
+      selectedId: stored.systemPromptSettings.selectedId || "default",
+    };
+    // Ensure default prompt always exists
+    if (!systemPromptSettings.prompts.find((p) => p.id === "default")) {
+      systemPromptSettings.prompts.unshift(DEFAULT_SYSTEM_PROMPT);
+    }
+  }
+
+  if (stored.panelSettings) {
+    panelSettings = { ...panelSettings, ...stored.panelSettings };
   }
 
   providerSelect.value = providerSettings.selectedProvider;
@@ -255,18 +351,205 @@ async function loadSettings() {
   }
 
   if (stored.collapseStates) {
-    if (typeof stored.collapseStates.apiConfig === "boolean") {
-      collapseStates.apiConfig = stored.collapseStates.apiConfig;
-      if (apiConfigSection) apiConfigSection.open = collapseStates.apiConfig;
-    }
-    if (typeof stored.collapseStates.modelStyle === "boolean") {
-      collapseStates.modelStyle = stored.collapseStates.modelStyle;
-      if (modelStyleSection) modelStyleSection.open = collapseStates.modelStyle;
-    }
+    Object.keys(collapseStates).forEach((key) => {
+      if (typeof stored.collapseStates[key] === "boolean") {
+        collapseStates[key] = stored.collapseStates[key];
+        const section = document.getElementById(key);
+        if (section) section.open = collapseStates[key];
+      }
+    });
   }
 
   clearUnsaved();
   updateInlineError("");
+}
+
+function initSystemPrompts() {
+  refreshPromptSelect();
+  const selectedPrompt = systemPromptSettings.prompts.find(
+    (p) => p.id === systemPromptSettings.selectedId,
+  );
+  if (selectedPrompt) {
+    promptName.value = selectedPrompt.name;
+    promptContent.value = selectedPrompt.content;
+    updateDeleteButtonState();
+  }
+}
+
+function initPanelSettings() {
+  if (panelModeSelect) {
+    panelModeSelect.value = panelSettings.defaultMode;
+  }
+  // Show appropriate switch button based on current mode
+  if (IS_SIDEBAR && switchToPopupBtn) {
+    switchToPopupBtn.style.display = "block";
+  }
+  if (!IS_SIDEBAR && switchToSidebarBtn) {
+    switchToSidebarBtn.style.display = "block";
+  }
+}
+
+function refreshPromptSelect() {
+  if (!promptSelect) return;
+  promptSelect.innerHTML = "";
+  systemPromptSettings.prompts.forEach((prompt) => {
+    const option = document.createElement("option");
+    option.value = prompt.id;
+    option.textContent = prompt.name + (prompt.isDefault ? " (Default)" : "");
+    promptSelect.appendChild(option);
+  });
+  promptSelect.value = systemPromptSettings.selectedId;
+}
+
+function handlePromptSelect() {
+  const selectedId = promptSelect.value;
+  systemPromptSettings.selectedId = selectedId;
+  const prompt = systemPromptSettings.prompts.find((p) => p.id === selectedId);
+  if (prompt) {
+    promptName.value = prompt.name;
+    promptContent.value = prompt.content;
+    updateDeleteButtonState();
+  }
+  saveSystemPromptSettings();
+}
+
+function updateDeleteButtonState() {
+  const selectedPrompt = systemPromptSettings.prompts.find(
+    (p) => p.id === systemPromptSettings.selectedId,
+  );
+  if (deletePromptBtn) {
+    deletePromptBtn.disabled = selectedPrompt?.isDefault || false;
+    deletePromptBtn.title = selectedPrompt?.isDefault
+      ? "Cannot delete the default prompt"
+      : "Delete this prompt";
+  }
+}
+
+async function handleSavePrompt() {
+  const selectedId = systemPromptSettings.selectedId;
+  const promptIndex = systemPromptSettings.prompts.findIndex(
+    (p) => p.id === selectedId,
+  );
+
+  if (promptIndex === -1) return;
+
+  const isDefault = systemPromptSettings.prompts[promptIndex].isDefault;
+
+  systemPromptSettings.prompts[promptIndex] = {
+    ...systemPromptSettings.prompts[promptIndex],
+    name: isDefault ? "Default" : promptName.value.trim() || "Unnamed Prompt",
+    content: promptContent.value.trim() || DEFAULT_SYSTEM_PROMPT.content,
+  };
+
+  await saveSystemPromptSettings();
+  refreshPromptSelect();
+  updatePromptStatus("Prompt saved", true);
+}
+
+async function handleAddNewPrompt() {
+  const newId = "prompt_" + Date.now();
+  const newPrompt = {
+    id: newId,
+    name: "New Prompt",
+    content: "You are a helpful assistant that summarizes text content.",
+    isDefault: false,
+  };
+
+  systemPromptSettings.prompts.push(newPrompt);
+  systemPromptSettings.selectedId = newId;
+
+  await saveSystemPromptSettings();
+  refreshPromptSelect();
+  promptName.value = newPrompt.name;
+  promptContent.value = newPrompt.content;
+  updateDeleteButtonState();
+  updatePromptStatus("New prompt created", true);
+}
+
+async function handleDeletePrompt() {
+  const selectedId = systemPromptSettings.selectedId;
+  const prompt = systemPromptSettings.prompts.find((p) => p.id === selectedId);
+
+  if (prompt?.isDefault) {
+    updatePromptStatus("Cannot delete the default prompt", false);
+    return;
+  }
+
+  systemPromptSettings.prompts = systemPromptSettings.prompts.filter(
+    (p) => p.id !== selectedId,
+  );
+  systemPromptSettings.selectedId = "default";
+
+  await saveSystemPromptSettings();
+  refreshPromptSelect();
+  initSystemPrompts();
+  updatePromptStatus("Prompt deleted", true);
+}
+
+async function saveSystemPromptSettings() {
+  await chrome.storage.local.set({ systemPromptSettings });
+}
+
+function updatePromptStatus(message, success) {
+  if (!promptStatus) return;
+  promptStatus.textContent = message;
+  promptStatus.className = `api-status ${success ? "success" : "error"}`;
+  setTimeout(() => {
+    promptStatus.textContent = "";
+    promptStatus.className = "api-status";
+  }, 3000);
+}
+
+async function handlePanelModeChange() {
+  panelSettings.defaultMode = panelModeSelect.value;
+  await savePanelSettings();
+  // Notify background to update action behavior
+  chrome.runtime.sendMessage({
+    action: "updatePanelMode",
+    mode: panelSettings.defaultMode,
+  });
+  updatePanelStatus(`Default mode set to ${panelSettings.defaultMode}`, true);
+}
+
+async function handleSwitchToSidebar() {
+  try {
+    // Update panel mode to sidebar
+    panelSettings.defaultMode = "sidebar";
+    await savePanelSettings();
+    // Notify background to update action behavior
+    await chrome.runtime.sendMessage({
+      action: "updatePanelMode",
+      mode: "sidebar",
+    });
+    updatePanelStatus(
+      "Sidebar mode enabled. Click extension icon to open.",
+      true,
+    );
+    // Close popup after a short delay
+    setTimeout(() => window.close(), 1500);
+  } catch (error) {
+    updatePanelStatus("Failed to switch to sidebar: " + error.message, false);
+  }
+}
+
+async function handleSwitchToPopup() {
+  // Close sidebar and open popup
+  chrome.runtime.sendMessage({ action: "openPopup" });
+  updatePanelStatus("Opening popup...", true);
+}
+
+async function savePanelSettings() {
+  await chrome.storage.local.set({ panelSettings });
+}
+
+function updatePanelStatus(message, success) {
+  if (!panelStatus) return;
+  panelStatus.textContent = message;
+  panelStatus.className = `api-status ${success ? "success" : "error"}`;
+  setTimeout(() => {
+    panelStatus.textContent = "";
+    panelStatus.className = "api-status";
+  }, 3000);
 }
 
 async function applyProviderSelection(provider, options = {}) {
@@ -424,17 +707,7 @@ async function refreshModelOptions(provider, options = {}) {
   }
 }
 
-function getSelectedTabIds() {
-  const checkboxes = document.querySelectorAll(".tab-checkbox:checked");
-  return new Set(
-    Array.from(checkboxes).map((cb) =>
-      parseInt(cb.getAttribute("data-tab-id"), 10),
-    ),
-  );
-}
-
-async function loadTabs(preserveSelection = false) {
-  const previousSelection = preserveSelection ? getSelectedTabIds() : new Set();
+async function loadTabs() {
   try {
     showTabSkeletons();
     pruneCache();
@@ -466,14 +739,6 @@ async function loadTabs(preserveSelection = false) {
         if (summaryElement) {
           summaryElement.textContent = cached.summary || cached;
           summaryElement.style.display = "block";
-        }
-      }
-      // Restore selection if tab was previously selected
-      if (previousSelection.has(tab.id)) {
-        const checkbox = tabElement.querySelector(".tab-checkbox");
-        if (checkbox) {
-          checkbox.checked = true;
-          tabElement.classList.add("selected");
         }
       }
       tabList.appendChild(tabElement);
@@ -516,11 +781,8 @@ function createTabElement(tab) {
   favicon.onerror = () => (favicon.src = "icons/icon-16.png");
 
   const title = document.createElement("span");
-
   title.className = "tab-title";
-
   title.textContent = tab.title;
-
   title.title = tab.title;
 
   const statusSpan = document.createElement("span");
@@ -529,17 +791,12 @@ function createTabElement(tab) {
   statusSpan.style.display = "none";
 
   const loaderDiv = document.createElement("div");
-
   loaderDiv.className = "tab-loader";
-
   loaderDiv.style.display = "none";
-
   loaderDiv.innerHTML = '<div class="loader-spinner small"></div>';
 
   tabContentDiv.appendChild(favicon);
-
   tabContentDiv.appendChild(title);
-
   tabContentDiv.appendChild(statusSpan);
   tabContentDiv.appendChild(loaderDiv);
 
@@ -574,6 +831,13 @@ function getCurrentModel(provider) {
 
 function getCurrentApiKey(provider) {
   return providerSettings.keys[provider] || "";
+}
+
+function getActiveSystemPrompt() {
+  const prompt = systemPromptSettings.prompts.find(
+    (p) => p.id === systemPromptSettings.selectedId,
+  );
+  return prompt?.content || DEFAULT_SYSTEM_PROMPT.content;
 }
 
 function getStyleExtras() {
@@ -673,7 +937,7 @@ async function refreshTabs() {
   }
   isRefreshingTabs = true;
   try {
-    await loadTabs(true); // Preserve selection during refresh
+    await loadTabs();
   } finally {
     isRefreshingTabs = false;
     if (pendingTabRefresh && !document.hidden) {
@@ -898,6 +1162,65 @@ function toggleLoader(show) {
     : "block";
 }
 
+// Loader progress bar functions
+function updateLoaderProgress(current, total, tabTitle = "") {
+  if (!progressLabel || !progressBar || !progressCount || !progressTab) return;
+
+  const percentage = total > 0 ? (current / total) * 100 : 0;
+  progressLabel.textContent =
+    current <= total ? `Summarizing tabs...` : `Complete!`;
+  progressBar.style.width = `${percentage}%`;
+  progressCount.textContent = `${current} / ${total}`;
+
+  if (tabTitle && tabTitle !== "Loading...") {
+    progressTab.innerHTML = `Processing: <strong>${escapeHtml(truncateText(tabTitle, 40))}</strong>`;
+    progressTab.style.display = "block";
+  } else if (tabTitle === "Loading...") {
+    progressTab.textContent = "Loading tab content...";
+    progressTab.style.display = "block";
+  } else {
+    progressTab.style.display = "none";
+  }
+}
+
+function resetLoaderProgress() {
+  if (!progressLabel || !progressBar || !progressCount || !progressTab) return;
+  progressLabel.textContent = "Summarizing tabs...";
+  progressBar.style.width = "0%";
+  progressCount.textContent = "0 / 0";
+  progressTab.textContent = "";
+  progressTab.style.display = "none";
+}
+
+// Summary section progress bar functions (for when loader is hidden)
+function showSummaryProgress(current, total, tabTitle = "") {
+  if (!summaryProgress) return;
+  summaryProgress.style.display = "block";
+  const percentage = total > 0 ? (current / total) * 100 : 0;
+  progressCount.textContent = `${current} / ${total}`;
+  progressFill.style.width = `${percentage}%`;
+  if (tabTitle) {
+    progressTabName.innerHTML = `Current: <strong>${escapeHtml(tabTitle)}</strong>`;
+  } else {
+    progressTabName.innerHTML = "";
+  }
+}
+
+function updateSummaryProgress(current, total, tabTitle = "") {
+  showSummaryProgress(current, total, tabTitle);
+}
+
+function hideSummaryProgress() {
+  if (!summaryProgress) return;
+  summaryProgress.style.display = "none";
+}
+
+// Helper function to truncate text
+function truncateText(text, maxLength) {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength - 3) + "...";
+}
+
 function updateApiStatus(message, success) {
   if (!apiStatus) return;
   apiStatus.textContent = message;
@@ -994,6 +1317,7 @@ async function handleSummarizeSelected() {
   const apiKey = getCurrentApiKey(provider);
   const model = getCurrentModel(provider);
   const extras = { ...getExtras(provider) };
+  const systemPrompt = getActiveSystemPrompt();
   const requiresKey = PROVIDER_REQUIRES_KEY[provider] !== false;
 
   if (requiresKey && !apiKey) {
@@ -1016,6 +1340,9 @@ async function handleSummarizeSelected() {
   isSummarizingTabs = true;
   toggleLoader(true);
   showSummarySkeleton(true);
+  resetLoaderProgress();
+  updateLoaderProgress(0, selectedTabs.length, "");
+  hideSummaryProgress();
   updateInlineError("");
   updateApiStatus("Summarizing selected tabs...", true);
 
@@ -1029,6 +1356,7 @@ async function handleSummarizeSelected() {
       );
       let spinner;
       try {
+        updateLoaderProgress(i + 1, total, "Loading...");
         updateApiStatus(
           `Summarizing ${i + 1} of ${total} tab${total === 1 ? "" : "s"}...`,
           true,
@@ -1045,6 +1373,7 @@ async function handleSummarizeSelected() {
           model,
           provider,
           extras,
+          systemPrompt,
         });
 
         if (response.error) {
@@ -1059,6 +1388,7 @@ async function handleSummarizeSelected() {
         }
 
         const tab = await chrome.tabs.get(tabId);
+        updateLoaderProgress(i + 1, total, tab.title);
         await updateTabSummary(tabId, response.summary, provider, model, false);
         setTabStatus(tabId, "Done", false);
       } catch (error) {
@@ -1077,6 +1407,8 @@ async function handleSummarizeSelected() {
   } finally {
     toggleLoader(false);
     showSummarySkeleton(false);
+    resetLoaderProgress();
+    hideSummaryProgress();
     summarizeSelectedBtn.disabled = false;
     isSummarizingTabs = false;
     if (pendingTabRefresh && !document.hidden) {
@@ -1084,6 +1416,13 @@ async function handleSummarizeSelected() {
       scheduleTabRefresh();
     }
   }
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 async function updateTabSummary(
@@ -1272,9 +1611,7 @@ async function handleClear() {
   }
   summaryCache = {
     entries: {},
-
     order: [],
-
     timestamp: Date.now(),
   };
 

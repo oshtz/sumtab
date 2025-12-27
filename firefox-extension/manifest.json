@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "sumtab",
-  "version": "0.1",
-  "description": "Summarize your open tabs using ChatGPT",
+  "version": "0.2.0",
+  "description": "Summarize your open tabs using AI",
   "author": "Omer Shatzberg",
   "homepage_url": "https://github.com/oshtz/sumtab/firefox-extension",
   "browser_specific_settings": {
@@ -18,12 +18,7 @@
     "96": "icons/icon-96.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": [
-    "tabs",
-    "activeTab",
-    "storage",
-    "<all_urls>"
-  ],
+  "permissions": ["tabs", "activeTab", "storage", "<all_urls>"],
   "background": {
     "scripts": ["background.js"],
     "persistent": false
@@ -38,6 +33,17 @@
   ],
   "browser_action": {
     "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "96": "icons/icon-96.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "sidebar_action": {
+    "default_title": "sumtab",
+    "default_panel": "sidebar.html",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",
