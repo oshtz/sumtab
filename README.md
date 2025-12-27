@@ -6,21 +6,24 @@
   </picture>
 </p>
 
-## sumtab - Browser Extension for AI-Powered Tab Summarization
-sumtab is a browser extension that uses OpenAI's GPT models to automatically generate concise summaries of your open browser tabs. Perfect for research, reading, and managing multiple tabs efficiently.
+## sumtab - AI Tab Summaries for Chrome and Firefox
+sumtab is a browser extension that summarizes the content of your open tabs with your chosen AI provider. Select tabs, pick a model, and get concise or detailed summaries without leaving the browser.
 
 ## Supported Browsers
-- [Chrome Extension](./chrome-extension)
-- [Firefox Extension](./firefox-extension)
+- Chrome: https://chromewebstore.google.com/detail/sumtab/ebmhpcnomlfihekgildeopmlahicgbeb
+- Firefox: https://addons.mozilla.org/en-US/firefox/addon/sumtab/
+- Source folders: [chrome-extension](./chrome-extension), [firefox-extension](./firefox-extension)
 
 ## Features
-- 🚀 Instant tab summarization using AI
-- 📝 Support for different OpenAI models (GPT-4o, GPT-4, GPT-3.5)
-- 🔄 Bullet-point summary conversion
-- 💾 Automatic summary caching
-- 🌓 Dark/Light theme support
-- 📋 Copy summaries to clipboard
-- 🔗 Open summaries in new tabs
+- Summarize selected tabs from the current window in a popup or sidebar/side panel.
+- Provider and model selection with live model lists (cached locally).
+- Providers: OpenAI, OpenRouter, Anthropic, Google Gemini, Ollama (local), LM Studio (local), Custom (OpenAI-compatible, advanced).
+- Tone (concise/neutral/detailed) and length (short/medium/long) controls.
+- Bullet-point toggle for summaries.
+- System prompt library with create/edit/delete.
+- Local summary caching with clear/reset controls.
+- Copy summaries or open them in a new tab.
+- Light/dark theme toggle with OS preference.
 
 ## Installation
 
@@ -32,12 +35,22 @@ sumtab is a browser extension that uses OpenAI's GPT models to automatically gen
 - Visit https://addons.mozilla.org/en-US/firefox/addon/sumtab/
 - Click "Add to Firefox"
 
+## Usage
+1. Open the sidebar/side panel or popup.
+2. Choose a provider and model, then save your API key (not required for Ollama or LM Studio).
+3. Select tabs and click "Summarize Selected".
+4. Optionally switch to bullets, copy, or open the summary in a new tab.
+
+## Notes
+- Works on http(s) pages only; browser internal pages cannot be summarized.
+- Ollama and LM Studio assume local servers running on `localhost`.
+- Custom provider requires manual configuration of the base URL in the extension code.
+
 ## Privacy
-- No data is stored on external servers
-- API keys are stored in browser's local storage
-- Summaries are cached locally
-- Only processes the tabs you explicitly select
-- No tracking or analytics
+- Requests go directly from your browser to the selected AI provider.
+- API keys and cached summaries are stored in browser local storage.
+- Only the tabs you explicitly select are processed.
+- No tracking or analytics.
 
 ## License
 [MIT License](LICENSE)
