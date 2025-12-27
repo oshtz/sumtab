@@ -33,3 +33,6 @@ yarn-error.log*
 *.xpi
 *.pem
 store-assets/
+
+UPDATE.md
+TASKLIST.md

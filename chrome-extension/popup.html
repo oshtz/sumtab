@@ -1,118 +1,402 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>sumtab</title>
-  <link rel="stylesheet" href="styles.css">
-  <meta charset="UTF-8">
-</head>
-<body>
-  <div id="loader" class="loader" style="display: none;">
-    <div class="hill"></div>
-    <div class="box"></div>
-  </div>
+    <head>
+        <title>sumtab</title>
+        <link rel="stylesheet" href="styles.css" />
+        <meta charset="UTF-8" />
+    </head>
+    <body data-panel-mode="popup">
+        <div id="loader" class="loader" style="display: none">
+            <div class="hill"></div>
+            <div class="box"></div>
+        </div>
 
-  <div id="main-content">
-    <div class="container">
-      <div class="header">
-        <div class="logo-container">
-          <img src="logo.png" alt="sumtab" class="logo">
-        </div>
-        <div class="theme-toggle">
-          <input type="checkbox" id="darkMode" class="theme-checkbox">
-          <label for="darkMode" class="theme-label">
-            <span class="theme-icon">🌙</span>
-            <span class="theme-icon">☀️</span>
-          </label>
-        </div>
-      </div>
-      
-      <div class="settings-section">
-        <div class="card">
-          <div class="card-header">
-            <h2>API Configuration</h2>
-          </div>
-          <div class="card-content">
-            <div class="input-group">
-              <label for="apiKey">OpenAI API Key</label>
-              <div class="api-key-container">
-                <input type="password" id="apiKey" placeholder="Enter your API key">
-                <button id="saveApiKey" class="button primary">Save</button>
-              </div>
+        <div id="main-content">
+            <div class="container">
+                <div class="header hero">
+                    <div class="hero-copy">
+                        <div class="logo-row" style="justify-content: center; text-align: center;">
+                            <img src="logo.png" alt="sumtab" class="logo" />
+                        </div>
+
+                        <div class="meta-row" style="flex-wrap: wrap; gap: 6px; justify-content: center; text-align: center;">
+                            <div class="meta-pill" id="metaProvider" style="min-width: 0; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Provider: OpenAI">Provider: OpenAI</div>
+                            <div class="meta-pill" id="metaModel" style="min-width: 0; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Model: gpt-4o-mini">Model: gpt-4o-mini</div>
+                            <div class="meta-pill" style="min-width: 0; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Keys stored locally">Keys stored locally</div>
+                        </div>
+                    </div>
+                    <div class="theme-toggle">
+                        <input
+                            type="checkbox"
+                            id="darkMode"
+                            class="theme-checkbox"
+                        />
+                        <label for="darkMode" class="theme-label" style="border: none; background: transparent;">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3c.132 0 .263 0 .393.004a7 7 0 0 0 7.603 7.603A9 9 0 1 1 12 3z" />
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="4" />
+                                <path d="M12 1v2m0 18v2m11-11h-2M3 12H1m16.95 7.95-1.414-1.414M6.464 6.464 5.05 5.05m0 13.9 1.414-1.414m13.9-13.9-1.414 1.414" />
+                            </svg>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-area">
+                    <details id="settingsArea" class="card" open>
+                        <summary class="card-header" style="cursor: pointer;">
+                            <h2>Settings</h2>
+                        </summary>
+                        <div class="card-content">
+                            <div class="settings-section">
+                    <div class="card">
+                        <details id="apiConfig" open>
+                            <summary class="card-header" style="cursor: pointer;">
+                                <h2>API Configuration</h2>
+                            </summary>
+                            <div class="card-content">
+                                <div class="input-group">
+                                    <label for="providerSelect">Provider</label>
+                                    <div class="select-wrap">
+                                        <select id="providerSelect" class="select">
+                                            <option value="openai">OpenAI</option>
+                                            <option value="openrouter">
+                                                OpenRouter
+                                            </option>
+                                            <option value="anthropic">Anthropic</option>
+                                            <option value="google">Google</option>
+                                            <option value="ollama">Ollama</option>
+                                            <option value="lmstudio">LM Studio</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="select-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                <div class="input-group">
+                                    <label for="apiKey">OpenAI API Key</label>
+                                    <div class="api-key-container">
+                                        <input
+                                            type="password"
+                                            id="apiKey"
+                                            placeholder="Enter your OpenAI key"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="input-group">
+                                    <label for="openRouterKey"
+                                        >OpenRouter API Key</label
+                                    >
+                                    <div class="api-key-container">
+                                        <input
+                                            type="password"
+                                            id="openRouterKey"
+                                            placeholder="Enter your OpenRouter key"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="input-group">
+                                    <label for="anthropicKey">Anthropic API Key</label>
+                                    <div class="api-key-container">
+                                        <input
+                                            type="password"
+                                            id="anthropicKey"
+                                            placeholder="Enter your Anthropic key"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="input-group">
+                                    <label for="googleKey">Google API Key</label>
+                                    <div class="api-key-container">
+                                        <input
+                                            type="password"
+                                            id="googleKey"
+                                            placeholder="Enter your Google API key"
+                                        />
+                                    </div>
+                                </div>
+
+
+
+                                <div class="input-group">
+                                    <label for="customApiKey"
+                                        >Custom Provider API Key</label
+                                    >
+                                    <div class="api-key-container">
+                                        <input
+                                            type="password"
+                                            id="customApiKey"
+                                            placeholder="Enter your custom provider key"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="api-key-container"
+                                    style="margin-top: 8px"
+                                >
+                                    <button id="saveApiKey" class="button primary">
+                                        Save Keys
+                                    </button>
+                                    <button
+                                        id="saveProviderSettings"
+                                        class="button secondary"
+                                    >
+                                        Save Provider Settings
+                                    </button>
+                                </div>
+                                <div class="api-status" id="apiStatus"></div>
+                                <div class="api-status" id="providerStatus"></div>
+                                <div class="api-status unsaved-hint" id="unsavedHint" style="display: none">
+                                    Unsaved changes — click “Save” to apply.
+                                </div>
+                                <div class="api-status error" id="inlineError" aria-live="polite"></div>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="card">
+                        <details id="modelStyle" open>
+                            <summary class="card-header" style="cursor: pointer;">
+                                <h2>Model & Style</h2>
+                            </summary>
+                            <div class="card-content">
+                                <div class="input-group">
+                                <label for="modelSelect">Model</label>
+                                <div class="select-wrap">
+                                    <select id="modelSelect" class="select">
+                                        <option value="">Loading models...</option>
+                                    </select>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="select-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="toneSelect">Tone</label>
+                                    <div class="select-wrap">
+                                        <select id="toneSelect" class="select">
+                                            <option value="concise">Concise</option>
+                                            <option value="neutral" selected>Neutral</option>
+                                            <option value="detailed">Detailed</option>
+                                        </select>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="select-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </div>
+                                    <p class="provider-tip">
+                                        Tone adjusts creativity: Concise = focused, Neutral = balanced, Detailed = more expressive.
+                                    </p>
+                                </div>
+                                <div class="input-group">
+                                    <label for="lengthSelect">Length</label>
+                                    <div class="select-wrap">
+                                        <select id="lengthSelect" class="select">
+                                            <option value="short">Short</option>
+                                            <option value="medium" selected>Medium</option></option>
+                                            <option value="long">Long</option>
+                                        </select>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="select-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </div>
+                                    <p class="provider-tip">
+                                        Length maps to max tokens: Short = 200, Medium = 400, Long = 800 (per response).
+                                    </p>
+                                </div>
+                                <p class="api-status" id="modelStatus">
+                                    Models and style will refresh when provider changes.
+                                </p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="card">
+                        <details id="systemPrompts">
+                            <summary class="card-header" style="cursor: pointer;">
+                                <h2>System Prompts</h2>
+                            </summary>
+                            <div class="card-content">
+                                <div class="input-group">
+                                    <label for="promptSelect">Active Prompt</label>
+                                    <div class="select-wrap">
+                                        <select id="promptSelect" class="select">
+                                            <option value="default">Default</option>
+                                        </select>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="select-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label for="promptName">Prompt Name</label>
+                                    <input type="text" id="promptName" placeholder="Enter prompt name" />
+                                </div>
+                                <div class="input-group">
+                                    <label for="promptContent">Prompt Content</label>
+                                    <textarea id="promptContent" rows="4" placeholder="Enter system prompt content..."></textarea>
+                                </div>
+                                <div class="prompt-actions" style="display: flex; gap: 8px; margin-top: 8px;">
+                                    <button id="savePrompt" class="button primary">Save Prompt</button>
+                                    <button id="addNewPrompt" class="button secondary">Add New</button>
+                                    <button id="deletePrompt" class="button secondary" style="color: var(--error-color);">Delete</button>
+                                </div>
+                                <div class="api-status" id="promptStatus"></div>
+                                <p class="provider-tip">
+                                    The default prompt cannot be deleted. Create custom prompts for different summarization styles.
+                                </p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="card">
+                        <details id="panelSettings">
+                            <summary class="card-header" style="cursor: pointer;">
+                                <h2>Panel Settings</h2>
+                            </summary>
+                            <div class="card-content">
+                                <div class="input-group">
+                                    <label for="panelModeSelect">Default Panel Mode</label>
+                                    <div class="select-wrap">
+                                        <select id="panelModeSelect" class="select">
+                                            <option value="sidebar" selected>Sidebar (Recommended)</option>
+                                            <option value="popup">Popup</option>
+                                        </select>
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="select-caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </div>
+                                    <p class="provider-tip">
+                                        Sidebar stays open while you browse. Popup closes when you click away.
+                                    </p>
+                                </div>
+                                <div class="panel-switch-actions" style="margin-top: 8px;">
+                                    <button id="switchToSidebar" class="button secondary">
+                                        Open as Sidebar
+                                    </button>
+                                </div>
+                                <div class="api-status" id="panelStatus"></div>
+                            </div>
+                        </details>
+                    </div>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="tabs-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Open Tabs</h2>
+                            <div class="tab-actions">
+                                <button
+                                    id="selectAll"
+                                    class="button secondary small"
+                                >
+                                    Select All
+                                </button>
+                                <button
+                                    id="deselectAll"
+                                    class="button secondary small"
+                                >
+                                    Deselect All
+                                </button>
+                                <button
+                                    id="summarizeSelected"
+                                    class="button primary"
+                                    disabled
+                                >
+                                    Summarize Selected
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div id="tabList" class="tab-list" aria-live="polite">
+                                <div class="tab-item skeleton">
+                                    <div class="tab-favicon"></div>
+                                    <div class="tab-title skeleton-bar"></div>
+                                </div>
+                                <div class="tab-item skeleton">
+                                    <div class="tab-favicon"></div>
+                                    <div class="tab-title skeleton-bar"></div>
+                                </div>
+                                <div class="tab-item skeleton">
+                                    <div class="tab-favicon"></div>
+                                    <div class="tab-title skeleton-bar"></div>
+                                </div>
+                            </div>
+                            <div id="tabEmpty" class="empty-state" style="display: none">
+                                <div class="empty-title">No tabs available</div>
+                                <div class="empty-subtitle">
+                                    Open a tab with readable content, then refresh this popup.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-section">
+                    <div id="results" class="card">
+                        <div class="card-header">
+                            <h2>Summary</h2>
+                        </div>
+                        <div class="card-content">
+                            <div
+                                id="summaryContent"
+                                class="summary-content"
+                            ></div>
+                            <div id="summarySkeleton" class="summary-content skeleton" style="display: none">
+                                <div class="skeleton-bar" style="width: 80%; height: 12px; margin-bottom: 8px;"></div>
+                                <div class="skeleton-bar" style="width: 60%; height: 12px; margin-bottom: 8px;"></div>
+                                <div class="skeleton-bar" style="width: 90%; height: 12px;"></div>
+                            </div>
+                            <div id="summaryEmpty" class="empty-state" style="display: none">
+                                <div class="empty-title">No summaries yet</div>
+                                <div class="empty-subtitle">Select tabs and click “Summarize Selected” to get started.</div>
+                            </div>
+                            <div class="summary-actions">
+                                <button
+                                    id="copyBtn"
+                                    class="button action-button"
+                                    title="Copy to clipboard"
+                                >
+                                    <span class="button-content">Copy</span>
+                                    <span class="checkmark">✓</span>
+                                </button>
+                                <button
+                                    id="openInNewTab"
+                                    class="button action-button"
+                                    title="Open in new tab"
+                                >
+                                    <span class="button-content">New Tab</span>
+                                </button>
+                                <button
+                                    id="bulletsBtn"
+                                    class="button action-button"
+                                    title="Toggle bullet points"
+                                >
+                                    <span class="button-content">Bullets</span>
+                                </button>
+                                <button
+                                    id="clearBtn"
+                                    class="button action-button"
+                                    title="Clear summary"
+                                >
+                                    <span class="button-content">Clear</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="api-status" id="apiStatus"></div>
-          </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <h2>Model Settings</h2>
-          </div>
-          <div class="card-content">
-            <div class="input-group">
-              <label for="modelSelect">Model</label>
-              <select id="modelSelect" class="select">
-                <optgroup label="GPT-4o">
-                  <option value="gpt-4o">GPT-4o (Fastest & Most Advanced)</option>
-                  <option value="chatgpt-4o-latest">ChatGPT-4o Latest (Most Up-to-date)</option>
-                  <option value="gpt-4o-mini" selected>GPT-4o Mini (Fast & Efficient)</option>
-                </optgroup>
-                <optgroup label="GPT-4">
-                  <option value="gpt-4-turbo">GPT-4 Turbo (High Performance)</option>
-                  <option value="gpt-4">GPT-4 (Legacy)</option>
-                </optgroup>
-                <optgroup label="GPT-3.5">
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Legacy)</option>
-                </optgroup>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="tabs-section">
-        <div class="card">
-          <div class="card-header">
-            <h2>Open Tabs</h2>
-            <div class="tab-actions">
-              <button id="selectAll" class="button secondary small">Select All</button>
-              <button id="deselectAll" class="button secondary small">Deselect All</button>
-              <button id="summarizeSelected" class="button primary" disabled>Summarize Selected</button>
-            </div>
-          </div>
-          <div class="card-content">
-            <div id="tabList" class="tab-list"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="summary-section">
-        <div id="results" class="card">
-          <div class="card-header">
-            <h2>Summary</h2>
-          </div>
-          <div class="card-content">
-            <div id="summaryContent" class="summary-content"></div>
-            <div class="summary-actions">
-              <button id="copyBtn" class="button action-button" title="Copy to clipboard">
-                <span class="button-content">Copy</span>
-                <span class="checkmark">✓</span>
-              </button>
-              <button id="openInNewTab" class="button action-button" title="Open in new tab">
-                <span class="button-content">New Tab</span>
-              </button>
-              <button id="bulletsBtn" class="button action-button" title="Toggle bullet points">
-                <span class="button-content">Bullets</span>
-              </button>
-              <button id="clearBtn" class="button action-button" title="Clear summary">
-                <span class="button-content">Clear</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="popup.js"></script>
-</body>
+        <script src="panel.js"></script>
+    </body>
 </html>
